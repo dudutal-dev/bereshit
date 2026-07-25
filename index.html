@@ -180,6 +180,9 @@ textarea{min-height:110px; resize:vertical}
 
 /* === 3D viewer === */
 #vwrap{position:relative}
+#brBadge{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin-top:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#FFF8E1;font-size:12px;font-weight:700;color:#4a3d12}
+#brBadge b{font-size:14px;color:#000}
+#brBadge span{opacity:.78;font-weight:600}
 #vCanvas3d{width:100%; height:340px; display:block; border-radius:8px; background:linear-gradient(#DFEDF9,#F6F5EF 70%); border:1px solid var(--line); touch-action:none; cursor:grab}
 #vCanvas{width:100%; height:300px; display:block; border-radius:8px; background:linear-gradient(#EAF2FA,#F6F5EF 65%); border:1px solid var(--line); touch-action:none; cursor:grab}
 .v-ctl{display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap}
@@ -421,6 +424,7 @@ pre#xmlPrev{background:#1B1B1B; color:#B8E986; font-size:.68rem; padding:12px; b
       <div id="vwrap" style="display:none">
         <canvas id="vCanvas3d" style="display:none"></canvas>
         <canvas id="vCanvas"></canvas>
+        <div id="brBadge" style="display:none"></div>
         <div class="v-ctl">
           <button class="v-btn" id="vRot" title="סובב">🔄</button>
           <button class="v-btn" id="vZin" title="הגדל">➕</button>
@@ -590,7 +594,7 @@ pre#xmlPrev{background:#1B1B1B; color:#B8E986; font-size:.68rem; padding:12px; b
 <div class="toast" id="toast"></div>
 <script>
 /* === VERSION — עדכן בכל שינוי! === */
-const APP_BUILD='v10.0 · build 2026-07-25.11';
+const APP_BUILD='v11.0 · build 2026-07-25.12 · Brick Resolver';
 /* === STATE === */
 const AUTO_SAVE_KEY='lego_mb_v1';
 let S={projects:{},currentId:null,ui:{tab:'plan'}};
@@ -725,23 +729,26 @@ function decomposeFootprint(w,d){ // מפרק שטח w×d ללבנים סטנד�
 }
 function makeLDR(){
   const p=cur(); if(!p||!p.plan||!Array.isArray(p.plan.voxels)||!p.plan.voxels.length)return null;
+  const vox=p.plan.voxels;
   const lines=['0 '+(p.name||'LEGO Model'),'0 Name: '+projName()+'.ldr','0 Author: LEGO Master Builder Studio','0 !LDRAW_ORG Model'];
+  const P={'2,4':'3001','2,3':'3002','2,2':'3003','2,1':'3004r','1,4':'3010','1,3':'3622','1,2':'3004','1,1':'3005'};
   let count=0;
-  p.plan.voxels.forEach(v=>{
-    const [X,Z,Y,W,D,H,C]=v, col=ldColor(C);
-    for(let lvl=0;lvl<H&&count<1500;lvl++){
-      decomposeFootprint(W,D).forEach(b=>{
-        if(count>=1500)return;
-        const rot=b.part.endsWith('r'), part=rot?b.part.slice(0,-1):b.part;
-        // מרכז הלבנה ב-LDU: סטאד=20, גובה לבנה=24, ציר Y כלפי מטה. טביעת הרגל ברשת: cl×sw תמיד
-        const cx=(X+b.dx+b.cl/2)*20, cz=(Z+b.dz+b.sw/2)*20;
-        const cy=-24*(Y+lvl);
-        const m=rot?'0 0 -1 0 1 0 1 0 0':'1 0 0 0 1 0 0 0 1';
-        lines.push(`1 ${col} ${cx} ${cy} ${cz} ${m} ${part}.dat`);
-        count++;
-      });
-    }
-  });
+  const emit=(x,z,y,w,d,c)=>{
+    if(count>=5000)return;
+    const key=P[d+','+w]||'3005', rot=key.endsWith('r'), part=rot?key.slice(0,-1):key;
+    lines.push(`1 ${ldColor(c)} ${(x+w/2)*20} ${-24*y} ${(z+d/2)*20} ${rot?'0 0 -1 0 1 0 1 0 0':'1 0 0 0 1 0 0 0 1'} ${part}.dat`);
+    count++;
+  };
+  /* מייצא בדיוק את מה שרואים — פלט ה-Brick Resolver */
+  const R3=(typeof brResolve==='function')?brResolve(vox,p.plan.totalPieces||0,vi=>vox[vi]?vox[vi][6]:11):null;
+  if(R3&&R3.bricks&&R3.bricks.length){
+    R3.bricks.forEach(b=>emit(b.x,b.z,b.y,b.w,b.d,b.c));
+  }else{
+    vox.forEach(v=>{const [X,Z,Y,W,D,H,C]=v;
+      for(let lvl=0;lvl<H&&count<5000;lvl++)
+        decomposeFootprint(W,D).forEach(bb=>emit(X+bb.dx,Z+bb.dz,Y+lvl,bb.cl,bb.sw,C));
+    });
+  }
   lines.push('0');
   return {text:lines.join('\n'),bricks:count};
 }
@@ -912,7 +919,9 @@ function ensure3D(){
   }catch(e){console.error('3D init failed',e); T.renderer=null; return false}
 }
 function clear3D(){
-  T.objs.forEach(o=>{T.scene.remove(o); o.geometry&&o.geometry.dispose(); o.material&&o.material.dispose()});
+  T.objs.forEach(o=>{T.scene.remove(o);
+    if(o.geometry&&!(o.geometry.userData&&o.geometry.userData.cached))o.geometry.dispose();
+    o.material&&o.material.dispose()});
   T.objs=[];
 }
 let WEDGE_GEO=null;
@@ -924,98 +933,286 @@ function wedgeGeo(){ // מנסרה משופעת: גבוה ב--x, יורד ל-+x 
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
   g.computeVertexNormals();
+  g.userData.cached=true;
   WEDGE_GEO=g; return g;
 }
+/* ===================================================================
+   BRICK RESOLVER v11 — פירוק הדגם ללבנים אמיתיות
+   נפחים סכמטיים  →  רשת סטאדים  →  קליפה חלולה  →  לבנים חוקיות
+   מקור אמת יחיד לרינדור, לספירה ולייצוא Studio.
+   =================================================================== */
+const BR = {
+  out: null, key: '',
+  stats: { visible: 0, internal: 0, total: 0, scale: 1, studs: 0 },
+  CAP: 4600,        // תקרת לבנים גלויות (ביצועים במובייל)
+  GRID: 120         // תקרת רוחב רשת בסטאדים
+};
+
+/* רצף מקטעים בשורה עם "בנייה מוסטת" (running bond) — התפרים לא מתיישרים */
+function brSegments(runStart, runLen, phase) {
+  const segs = []; let x = 0;
+  while (x < runLen) {
+    const absX = runStart + x;
+    // גבול התפר הבא לפי הפאזה של השורה
+    let bound = absX - ((absX - phase) % 4 + 4) % 4 + 4;
+    const cl = Math.min(4, runLen - x, Math.max(1, bound - absX));
+    segs.push({ dx: x, cl });
+    x += cl;
+  }
+  return segs;
+}
+
+/* בונה רשת תפוסה בקנה מידה k ומחזיר {occ, src, W, D, H} */
+function brGrid(vox, k) {
+  let W = 0, D = 0, H = 0;
+  vox.forEach(v => { W = Math.max(W, v[0] + v[3]); D = Math.max(D, v[1] + v[4]); H = Math.max(H, v[2] + v[5]); });
+  W = Math.round(W * k); D = Math.round(D * k); H = Math.round(H * k);
+  if (W * D * H > 3.2e6) return null;
+  const occ = new Uint8Array(W * D * H), src = new Int32Array(W * D * H).fill(-1);
+  const idx = (x, z, y) => (y * D + z) * W + x;
+  const R = n => Math.round(n * k);
+  vox.forEach((v, vi) => {
+    if ((v[7] || 0) !== 0) return;                       // גלגל/שיפוע/עמוד — לא נכנסים לרשת
+    const x0 = R(v[0]), z0 = R(v[1]), y0 = R(v[2]);
+    const x1 = Math.min(R(v[0] + v[3]), W), z1 = Math.min(R(v[1] + v[4]), D), y1 = Math.min(R(v[2] + v[5]), H);
+    for (let y = y0; y < y1; y++)
+      for (let z = z0; z < z1; z++)
+        for (let x = x0; x < x1; x++) { const i = idx(x, z, y); occ[i] = 1; src[i] = vi; }
+  });
+  return { occ, src, W, D, H, idx };
+}
+
+/* קליפה: תא נשאר אם הוא חשוף לפחות בכיוון אחד. הפנים נספר ולא מרונדר. */
+function brShell(G) {
+  const { occ, W, D, H, idx } = G;
+  const shell = new Uint8Array(occ.length); let internal = 0;
+  for (let y = 0; y < H; y++) for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
+    const i = idx(x, z, y); if (!occ[i]) continue;
+    const exposed =
+      x === 0 || x === W - 1 || z === 0 || z === D - 1 || y === 0 || y === H - 1 ||
+      !occ[idx(x - 1, z, y)] || !occ[idx(x + 1, z, y)] ||
+      !occ[idx(x, z - 1, y)] || !occ[idx(x, z + 1, y)] ||
+      !occ[idx(x, z, y - 1)] || !occ[idx(x, z, y + 1)];
+    if (exposed) shell[i] = 1; else internal++;
+  }
+  // מבנה פנימי אמיתי: לגו אמיתי חלול ברובו — עמוד תמיכה דליל בלבד
+  return { shell, internalBricks: Math.round(internal / 14) };
+}
+
+/* אריזת שכבה ללבנים: עדיפות לרוחב 2, אורך עד 4, תפרים מוסטים */
+function brPack(G, shell, colOfSrc) {
+  const { W, D, H, src, idx } = G;
+  const used = new Uint8Array(shell.length), bricks = [];
+  for (let y = 0; y < H; y++) {
+    const phase = (y % 2) * 2;
+    for (let z = 0; z < D; z++) {
+      for (let x = 0; x < W; x++) {
+        const i = idx(x, z, y);
+        if (!shell[i] || used[i]) continue;
+        const c = colOfSrc(src[i]);
+        // אורך הרצף בציר x באותו צבע
+        let run = 0;
+        while (x + run < W) { const j = idx(x + run, z, y); if (!shell[j] || used[j] || colOfSrc(src[j]) !== c) break; run++; }
+        const segs = brSegments(x, run, (phase + z) % 4);
+        segs.forEach(sg => {
+          const sx = x + sg.dx, cl = sg.cl;
+          // האם אפשר להרחיב לרוחב 2 (שורה z+1 זהה לכל האורך)?
+          let wide = z + 1 < D;
+          if (wide) for (let a = 0; a < cl; a++) { const j = idx(sx + a, z + 1, y); if (!shell[j] || used[j] || colOfSrc(src[j]) !== c) { wide = false; break; } }
+          const dd = wide ? 2 : 1;
+          for (let b = 0; b < dd; b++) for (let a = 0; a < cl; a++) used[idx(sx + a, z + b, y)] = 1;
+          // סטאדים גלויים = תאים שאין מעליהם כלום
+          let studs = 0;
+          for (let b = 0; b < dd; b++) for (let a = 0; a < cl; a++)
+            if (y === H - 1 || !G.occ[idx(sx + a, z + b, y + 1)]) studs++;
+          bricks.push({ x: sx, z, y, w: cl, d: dd, c, studs, src: src[i] });
+        });
+      }
+    }
+  }
+  return bricks;
+}
+
+/* בחירת קנה מידה כך שמספר הלבנים יתקרב ליעד ה-BOM */
+function brResolve(vox, target, colOfSrc) {
+  const key = (vox && vox.length) + '|' + target + '|' + JSON.stringify(vox && vox.slice(0, 3));
+  if (BR.out && BR.key === key) return BR.out;
+  if (!vox || !vox.length) return null;
+  let best = null, bestErr = Infinity;
+  let maxDim = 0; vox.forEach(v => { maxDim = Math.max(maxDim, v[0] + v[3], v[1] + v[4]); });
+  for (let k = 1; k <= 5; k += 0.5) {
+    if (maxDim * k > BR.GRID) break;
+    const G = brGrid(vox, k); if (!G) break;
+    const { shell, internalBricks } = brShell(G);
+    const bricks = brPack(G, shell, colOfSrc);
+    const total = bricks.length + internalBricks;
+    const err = Math.abs(total - (target || total));
+    if (bricks.length > BR.CAP) { if (!best) best = { k, G, bricks, internalBricks }; break; }
+    if (err < bestErr) { bestErr = err; best = { k, G, bricks, internalBricks }; }
+    else if (best) break;
+    if (total > (target || 0) * 1.25) break;
+  }
+  if (!best) return null;
+  BR.stats = {
+    visible: best.bricks.length, internal: best.internalBricks,
+    total: best.bricks.length + best.internalBricks, scale: best.k,
+    studs: best.bricks.reduce((s, b) => s + b.studs, 0)
+  };
+  BR.key = key; BR.out = { bricks: best.bricks, k: best.k, W: best.G.W, D: best.G.D, H: best.G.H };
+  return BR.out;
+}
+
+/* ===== גיאומטריה: לבנה משופת־קצוות (chamfer) — זה מה שנותן את הברק של ABS ===== */
+const BR_GEO = {};
+function brickGeo(w, d) {
+  const key = w + 'x' + d; if (BR_GEO[key]) return BR_GEO[key];
+  const c = 0.055, W = w - 0.04, D = d - 0.04, H = 1.2 - 0.02;
+  const sh = new THREE.Shape();
+  const x = W / 2 - c, z = D / 2 - c;
+  sh.moveTo(-x, -z); sh.lineTo(x, -z); sh.lineTo(x, z); sh.lineTo(-x, z); sh.closePath();
+  const g = new THREE.ExtrudeGeometry(sh, { depth: H - 2 * c, bevelEnabled: true, bevelSize: c, bevelThickness: c, bevelSegments: 1, curveSegments: 1 });
+  g.rotateX(-Math.PI / 2);
+  g.translate(0, -(H - 2 * c) / 2, 0);   // מרכוז אנכי סביב 0
+  g.computeVertexNormals();
+  g.userData.cached = true;
+  BR_GEO[key] = g; return g;
+}
+let STUD_GEO = null;
+function studGeo() {
+  if (STUD_GEO) return STUD_GEO;
+  STUD_GEO = new THREE.CylinderGeometry(0.295, 0.305, 0.22, 18, 1, false);
+  STUD_GEO.userData.cached = true;
+  return STUD_GEO;
+}
+
 function build3D(){
   clear3D();
   const vox=V.vox; if(!vox||!vox.length)return;
-  let W=0,D=0,H=0; vox.forEach(v=>{W=Math.max(W,v[0]+v[3]);D=Math.max(D,v[1]+v[4]);H=Math.max(H,v[2]+v[5])});
+  const target=(cur()&&cur().plan&&cur().plan.totalPieces)||0;
+  const colOfSrc=vi=>(vi>=0&&vox[vi])?vox[vi][6]:11;
+  const R3=brResolve(vox,target,colOfSrc);
+  const k=R3?R3.k:1;
+  const W=R3?R3.W:0, D=R3?R3.D:0, H=R3?R3.H:0;
+  let Wf=W,Df=D,Hf=H;
+  vox.forEach(v=>{Wf=Math.max(Wf,(v[0]+v[3])*k);Df=Math.max(Df,(v[1]+v[4])*k);Hf=Math.max(Hf,(v[2]+v[5])*k)});
   const {upto,curr}=stepBrickSet();
-  const cats={box:[[],[]],wheel:[[],[]],slope:[[],[]],round:[[],[]]}; // [רגיל, זוהר]
-  vox.forEach((v,i)=>{
-    if(!upto.has(i))return;
-    const g=curr.has(i)?1:0, [X,Z,Y,Wd,Dd,Hh,C]=v, shape=v[7]||0, dir=v[8]||0;
-    if(shape===1)cats.wheel[g].push({cx:X+Wd/2-W/2,cz:Z+Dd/2-D/2,y:Y,dm:Wd,wd:Dd,c:C});
-    else if(shape===2)cats.slope[g].push({cx:X+Wd/2-W/2,cz:Z+Dd/2-D/2,cy:Y*1.2+Hh*.6,sx:Wd,sy:Hh*1.2,sz:Dd,c:C,dir});
-    else if(shape===3)cats.round[g].push({cx:X+Wd/2-W/2,cz:Z+Dd/2-D/2,cy:Y*1.2+Hh*.6,dm:Wd,hh:Hh*1.2,c:C});
-    else for(let l=0;l<Hh;l++) decomposeFootprint(Wd,Dd).forEach(b=>{
-      cats.box[g].push({cx:X+b.dx+b.cl/2-W/2,cz:Z+b.dz+b.sw/2-D/2,cy:(Y+l)*1.2+.6,sx:b.cl,sz:b.sw,c:C,gx:X+b.dx-W/2,gz:Z+b.dz-D/2,cl:b.cl,sw:b.sw,top:(Y+l+1)*1.2});
-    });
-  });
-  const mat=g=>{const mm=new THREE.MeshStandardMaterial({roughness:.32,metalness:.05});
-    if(g){mm.emissive=new THREE.Color(0x8a6a00);mm.emissiveIntensity=.55} return mm};
-  const m4=new THREE.Matrix4(),q0=new THREE.Quaternion(),col=new THREE.Color(),s3=new THREE.Vector3(),p3=new THREE.Vector3();
+
+  /* חומר ABS: clearcoat = הברק הפלסטי שמבדיל לגו מקוביות */
+  const mat=g=>{
+    const M=(typeof THREE.MeshPhysicalMaterial!=='undefined')
+      ? new THREE.MeshPhysicalMaterial({roughness:.34,metalness:0,clearcoat:.65,clearcoatRoughness:.28})
+      : new THREE.MeshStandardMaterial({roughness:.34,metalness:.04});
+    if(g){M.emissive=new THREE.Color(0x8a6a00);M.emissiveIntensity=.5}
+    return M;
+  };
+  const m4=new THREE.Matrix4(),q0=new THREE.Quaternion(),col=new THREE.Color(),s3=new THREE.Vector3(1,1,1),p3=new THREE.Vector3();
   const qx=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),Math.PI/2);
-  const add=mesh=>{mesh.castShadow=true; mesh.receiveShadow=true; mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;T.scene.add(mesh);T.objs.push(mesh)};
-  [0,1].forEach(g=>{
-    /* קופסאות + סטאדים */
-    const items=cats.box[g];
-    if(items.length){
-      const boxes=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),mat(g),items.length);
-      let sn=0; items.forEach(it=>sn+=it.cl*it.sw);
-      const studs=new THREE.InstancedMesh(new THREE.CylinderGeometry(.3,.3,.22,14),mat(g),sn);
-      let si=0;
-      items.forEach((it,ix)=>{
-        col.set(vizColor(it.c));
-        m4.compose(p3.set(it.cx,it.cy,it.cz),q0,s3.set(it.sx*.985,1.2*.985,it.sz*.985));
-        boxes.setMatrixAt(ix,m4);boxes.setColorAt(ix,col);
-        for(let a2=0;a2<it.cl;a2++)for(let b2=0;b2<it.sw;b2++){
-          m4.compose(p3.set(it.gx+a2+.5,it.top+.11,it.gz+b2+.5),q0,s3.set(1,1,1));
-          studs.setMatrixAt(si,m4);studs.setColorAt(si,col);si++;
+  const add=m=>{m.castShadow=true;m.receiveShadow=true;m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true;T.scene.add(m);T.objs.push(m)};
+
+  /* ===== לבנים אמיתיות ===== */
+  if(R3){
+    const groups={};   // "w,d,g" → מערך לבנים
+    let studN=[0,0];
+    R3.bricks.forEach(b=>{
+      if(!upto.has(b.src))return;
+      const g=curr.has(b.src)?1:0;
+      (groups[b.w+','+b.d+','+g]=groups[b.w+','+b.d+','+g]||[]).push(b);
+      studN[g]+=b.studs;
+    });
+    const studs=[0,1].map(g=>studN[g]?new THREE.InstancedMesh(studGeo(),mat(g),studN[g]):null);
+    const si=[0,0];
+    Object.keys(groups).forEach(key=>{
+      const [w,d,g]=key.split(',').map(Number), arr=groups[key];
+      const mesh=new THREE.InstancedMesh(brickGeo(w,d),mat(g),arr.length);
+      arr.forEach((b,ix)=>{
+        col.set(vizColor(b.c));
+        p3.set(b.x+b.w/2-Wf/2, b.y*1.2+0.6, b.z+b.d/2-Df/2);
+        m4.compose(p3,q0,s3);
+        mesh.setMatrixAt(ix,m4); mesh.setColorAt(ix,col);
+        if(studs[g]&&b.studs){
+          const topY=(b.y+1)*1.2;
+          for(let a=0;a<b.w;a++)for(let c2=0;c2<b.d;c2++){
+            if(si[g]>=studN[g])break;
+            m4.compose(p3.set(b.x+a+.5-Wf/2, topY+.105, b.z+c2+.5-Df/2),q0,s3);
+            studs[g].setMatrixAt(si[g],m4); studs[g].setColorAt(si[g],col); si[g]++;
+          }
         }
       });
-      add(boxes); add(studs);
+      add(mesh);
+    });
+    [0,1].forEach(g=>{if(studs[g]){studs[g].count=si[g];add(studs[g])}});
+  }
+
+  /* ===== חלקים מיוחדים: גלגלים · שיפועים · עמודים (מוגדלים לפי k) ===== */
+  const cats={wheel:[[],[]],slope:[[],[]],round:[[],[]]};
+  vox.forEach((v,i)=>{
+    if(!upto.has(i))return;
+    const shape=v[7]||0; if(!shape)return;
+    const g=curr.has(i)?1:0, X=v[0]*k,Z=v[1]*k,Y=v[2]*k,Wd=v[3]*k,Dd=v[4]*k,Hh=v[5]*k,C=v[6],dir=v[8]||0;
+    if(shape===1)cats.wheel[g].push({cx:X+Wd/2-Wf/2,cz:Z+Dd/2-Df/2,y:Y,dm:Wd,wd:Dd,c:C});
+    else if(shape===2){
+      /* שיפוע ארוך מפורק ללבני שיפוע 2 סטאדים — כמו בדגם אמיתי */
+      const along=(dir<2)?Wd:Dd, step=2;
+      for(let o=0;o<along;o+=step){
+        const len=Math.min(step,along-o);
+        const sx=(dir<2)?len:Wd, sz=(dir<2)?Dd:len;
+        const ox=(dir<2)?o:0, oz=(dir<2)?0:o;
+        cats.slope[g].push({cx:X+ox+sx/2-Wf/2,cz:Z+oz+sz/2-Df/2,cy:Y*1.2+Hh*.6,sx,sy:Hh*1.2,sz,c:C,dir});
+      }
     }
-    /* גלגלים */
+    else if(shape===3)cats.round[g].push({cx:X+Wd/2-Wf/2,cz:Z+Dd/2-Df/2,cy:Y*1.2+Hh*.6,dm:Wd,hh:Hh*1.2,c:C});
+  });
+  [0,1].forEach(g=>{
     const wh=cats.wheel[g];
     if(wh.length){
-      const ms=new THREE.InstancedMesh(new THREE.CylinderGeometry(.5,.5,1,22),mat(g),wh.length);
-      const hub=new THREE.InstancedMesh(new THREE.CylinderGeometry(.5,.5,1,14),mat(g),wh.length);
+      const tyre=new THREE.InstancedMesh(new THREE.CylinderGeometry(.5,.5,1,26),mat(g),wh.length);
+      const hub=new THREE.InstancedMesh(new THREE.CylinderGeometry(.5,.5,1,18),mat(g),wh.length);
       wh.forEach((it,ix)=>{
         col.set(vizColor(it.c));
-        m4.compose(p3.set(it.cx,it.y*1.2+it.dm/2,it.cz),qx,s3.set(it.dm,it.wd*1.06,it.dm));
-        ms.setMatrixAt(ix,m4); ms.setColorAt(ix,col);
-        m4.compose(p3.set(it.cx,it.y*1.2+it.dm/2,it.cz),qx,s3.set(it.dm*.55,it.wd*1.12,it.dm*.55));
-        hub.setMatrixAt(ix,m4); hub.setColorAt(ix,new THREE.Color('#A0A5A9'));
+        m4.compose(p3.set(it.cx,it.y*1.2+it.dm/2,it.cz),qx,s3.set(it.dm,it.wd*1.02,it.dm));
+        tyre.setMatrixAt(ix,m4); tyre.setColorAt(ix,col);
+        m4.compose(p3.set(it.cx,it.y*1.2+it.dm/2,it.cz),qx,s3.set(it.dm*.56,it.wd*1.1,it.dm*.56));
+        hub.setMatrixAt(ix,m4); hub.setColorAt(ix,new THREE.Color('#C8CBCC'));
       });
-      add(ms); add(hub);
+      s3.set(1,1,1); add(tyre); add(hub);
     }
-    /* שיפועים */
     const sl=cats.slope[g];
     if(sl.length){
-      const smat=mat(g); smat.side=THREE.DoubleSide;
-      const ms=new THREE.InstancedMesh(wedgeGeo(),smat,sl.length);
+      const sm=mat(g); sm.side=THREE.DoubleSide;
+      const ms=new THREE.InstancedMesh(wedgeGeo(),sm,sl.length);
       sl.forEach((it,ix)=>{
         col.set(vizColor(it.c));
         const ang={0:0,1:Math.PI,2:-Math.PI/2,3:Math.PI/2}[it.dir]||0;
         const qy=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),ang);
         const sx=(it.dir<2)?it.sx:it.sz, sz=(it.dir<2)?it.sz:it.sx;
-        m4.compose(p3.set(it.cx,it.cy,it.cz),qy,s3.set(sx*.985,it.sy*.985,sz*.985));
+        m4.compose(p3.set(it.cx,it.cy,it.cz),qy,s3.set(sx*.97,it.sy*.97,sz*.97));
         ms.setMatrixAt(ix,m4); ms.setColorAt(ix,col);
       });
-      add(ms);
+      s3.set(1,1,1); add(ms);
     }
-    /* עמודים עגולים */
     const rd=cats.round[g];
     if(rd.length){
-      const ms=new THREE.InstancedMesh(new THREE.CylinderGeometry(.5,.5,1,18),mat(g),rd.length);
+      const ms=new THREE.InstancedMesh(new THREE.CylinderGeometry(.5,.5,1,20),mat(g),rd.length);
       rd.forEach((it,ix)=>{
         col.set(vizColor(it.c));
         m4.compose(p3.set(it.cx,it.cy,it.cz),q0,s3.set(it.dm,it.hh,it.dm));
         ms.setMatrixAt(ix,m4); ms.setColorAt(ix,col);
       });
-      add(ms);
+      s3.set(1,1,1); add(ms);
     }
   });
-  /* baseplate ירוק עם סטאדים */
-  const bp=new THREE.Mesh(new THREE.BoxGeometry(W+8,.34,D+8),new THREE.MeshStandardMaterial({color:0xA8C79E,roughness:.85}));
+
+  /* ===== משטח בסיס ===== */
+  const bp=new THREE.Mesh(new THREE.BoxGeometry(Wf+8,.34,Df+8),new THREE.MeshStandardMaterial({color:0xA8C79E,roughness:.85}));
   bp.position.set(0,-.17,0); bp.receiveShadow=true; T.scene.add(bp); T.objs.push(bp);
-  const bs=new THREE.InstancedMesh(new THREE.CylinderGeometry(.3,.3,.16,10),new THREE.MeshStandardMaterial({color:0x9DBE93,roughness:.85}),(W+6)*(D+6));
+  const bn=Math.min(9000,Math.round(Wf+6)*Math.round(Df+6));
+  const bs=new THREE.InstancedMesh(new THREE.CylinderGeometry(.3,.3,.16,10),new THREE.MeshStandardMaterial({color:0x9DBE93,roughness:.85}),bn);
   const m4b=new THREE.Matrix4(),qb=new THREE.Quaternion(),sb=new THREE.Vector3(1,1,1),pb=new THREE.Vector3();
   let bi=0;
-  for(let i=0;i<W+6;i++)for(let j=0;j<D+6;j++){m4b.compose(pb.set(i-(W+6)/2+.5,.08,j-(D+6)/2+.5),qb,sb);bs.setMatrixAt(bi++,m4b)}
-  bs.instanceMatrix.needsUpdate=true; T.scene.add(bs); T.objs.push(bs);
-  /* צל מגע רך */
+  for(let i=0;i<Wf+6&&bi<bn;i++)for(let j=0;j<Df+6&&bi<bn;j++){m4b.compose(pb.set(i-(Wf+6)/2+.5,.08,j-(Df+6)/2+.5),qb,sb);bs.setMatrixAt(bi++,m4b)}
+  bs.count=bi; bs.instanceMatrix.needsUpdate=true; T.scene.add(bs); T.objs.push(bs);
+
+  /* צל מגע */
   const scv=document.createElement('canvas'); scv.width=scv.height=128;
   const sc=scv.getContext('2d');
   const gr=sc.createRadialGradient(64,64,8,64,64,64);
@@ -1023,15 +1220,28 @@ function build3D(){
   sc.fillStyle=gr; sc.fillRect(0,0,128,128);
   const stex=new THREE.CanvasTexture(scv);
   const shadow=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:stex,transparent:true,depthWrite:false}));
-  shadow.rotation.x=-Math.PI/2; shadow.position.set(0,.03,0); shadow.scale.set(W*1.25,D*1.25,1);
+  shadow.rotation.x=-Math.PI/2; shadow.position.set(0,.03,0); shadow.scale.set(Wf*1.25,Df*1.25,1);
   T.scene.add(shadow); T.objs.push(shadow);
-  const R=Math.max(W,D,H*1.2);
-  if(T.sun){const sc=T.sun.shadow.camera; T.sun.position.set(R,R*1.7,R*.7);
-    sc.left=-R*1.4; sc.right=R*1.4; sc.top=R*1.6; sc.bottom=-R*.5; sc.far=R*6; sc.updateProjectionMatrix()}
+
+  const R=Math.max(Wf,Df,Hf*1.2);
+  if(T.sun){const scam=T.sun.shadow.camera; T.sun.position.set(R,R*1.7,R*.7);
+    scam.left=-R*1.4; scam.right=R*1.4; scam.top=R*1.6; scam.bottom=-R*.5; scam.far=R*6; scam.updateProjectionMatrix()}
   if(!T.dist)T.dist=R*2.3+8;
   T.maxDist=R*5+20; T.minDist=Math.max(4,R*.6);
-  T.center=new THREE.Vector3(0,H*.55,0);
+  T.center=new THREE.Vector3(0,Hf*.55,0);
+  updateBrBadge(target);
 }
+function updateBrBadge(target){
+  const el=document.getElementById('brBadge'); if(!el)return;
+  const s=BR.stats;
+  if(!s.total){el.style.display='none';return}
+  el.style.display='flex';
+  el.innerHTML='<b>🧱 '+s.total.toLocaleString('he-IL')+'</b> חלקים בדגם'+
+    '<span>'+s.visible.toLocaleString('he-IL')+' גלויות · '+s.internal.toLocaleString('he-IL')+' מבנה פנימי</span>'+
+    (target?'<span>יעד BOM: '+target.toLocaleString('he-IL')+'</span>':'')+
+    '<span>סקאלה ×'+(Math.round(s.scale*10)/10)+' · '+s.studs.toLocaleString('he-IL')+' סטאדים</span>';
+}
+
 function draw3D(){
   if(!T.renderer)return;
   const cv=document.getElementById('vCanvas3d');

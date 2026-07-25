@@ -1,0 +1,2082 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>LEGO Master Builder — סטודיו תכנון לגו</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* === DESIGN: LEGO tokens === */
+:root{
+  --yellow:#F7D117; --yellow-dk:#D9B400;
+  --red:#D01012;   --red-dk:#A50B0D;
+  --blue:#0057A8;  --blue-dk:#003F7C;
+  --green:#00A346; --green-dk:#007A34;
+  --orange:#F57D20;
+  --ink:#1B1B1B; --ink-soft:#3A3A3A;
+  --base:#E9E8E2; --card:#FFFFFF; --line:#D6D4CC;
+  --stud-shadow:inset 0 -3px 0 rgba(0,0,0,.22), inset 0 2px 0 rgba(255,255,255,.35);
+  --brick-shadow:0 4px 0 rgba(0,0,0,.18), 0 6px 14px rgba(0,0,0,.12);
+  --radius:10px;
+  font-size:16px;
+}
+*{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Heebo',system-ui,sans-serif; color:var(--ink);
+  background:
+    radial-gradient(circle at 4px 4px, rgba(0,0,0,.055) 2.6px, transparent 3px) 0 0/24px 24px,
+    var(--base);
+  min-height:100dvh; padding-bottom:calc(76px + env(safe-area-inset-bottom));
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* === Header: brick logo === */
+header{
+  background:var(--red); color:#fff; padding:14px 16px 10px;
+  box-shadow:0 4px 0 var(--red-dk), 0 8px 18px rgba(0,0,0,.25);
+  position:sticky; top:0; z-index:40;
+}
+.hd-row{display:flex; align-items:center; gap:12px; max-width:980px; margin:0 auto}
+.logo-brick{
+  background:var(--yellow); color:var(--ink); font-weight:900; font-size:1.05rem;
+  padding:10px 14px 8px; border-radius:8px; position:relative; line-height:1.1;
+  box-shadow:0 3px 0 var(--yellow-dk), 0 5px 10px rgba(0,0,0,.3); flex-shrink:0;
+}
+.logo-brick .studs{display:flex; gap:6px; position:absolute; top:-7px; right:10px}
+.logo-brick .studs i{
+  width:14px; height:9px; background:var(--yellow); border-radius:3px 3px 0 0;
+  box-shadow:var(--stud-shadow); display:block;
+}
+.hd-titles{flex:1; min-width:0}
+.hd-titles h1{font-size:1.15rem; font-weight:900; letter-spacing:.3px}
+.hd-titles p{font-size:.72rem; opacity:.85; font-weight:500}
+#saveInd{
+  font-size:.7rem; font-weight:700; background:rgba(0,0,0,.25); padding:5px 10px;
+  border-radius:99px; white-space:nowrap; transition:background .3s;
+}
+#saveInd.saving{background:var(--orange)} #saveInd.err{background:#000}
+@media(max-width:460px){
+  .hd-titles h1{font-size:.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .hd-titles p{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .logo-brick{font-size:.78rem; padding:8px 10px 6px}
+  .logo-brick .studs i{width:11px; height:7px}
+  #saveInd{font-size:.62rem; padding:4px 7px}
+}
+#setBtn{
+  background:rgba(0,0,0,.25); border:none; color:#fff; font-size:1.1rem; cursor:pointer;
+  width:38px; height:38px; border-radius:10px; flex-shrink:0; box-shadow:0 2px 0 rgba(0,0,0,.3);
+}
+#setBtn:active{transform:translateY(2px)}
+
+/* === Settings modal === */
+#modalBg{
+  position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:80; display:none;
+  align-items:flex-end; justify-content:center;
+}
+#modalBg.on{display:flex}
+#modal{
+  background:var(--card); width:100%; max-width:560px; border-radius:16px 16px 0 0;
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom)); position:relative;
+  box-shadow:0 -8px 30px rgba(0,0,0,.4); animation:pop .22s ease;
+}
+@media(min-width:760px){#modalBg{align-items:center} #modal{border-radius:16px}}
+#modal h2{font-size:1.05rem; font-weight:900; margin-bottom:8px; display:flex; align-items:center; gap:8px}
+#modal .close{position:absolute; top:12px; left:12px; background:none; border:none; font-size:1.2rem; cursor:pointer; color:#888}
+.key-row{display:flex; gap:8px; align-items:center}
+.key-row input{flex:1; direction:ltr; text-align:left; font-family:monospace; font-size:.82rem}
+.key-status{font-size:.8rem; font-weight:700; margin-top:8px; padding:8px 10px; border-radius:8px}
+.key-status.ok{background:#E4F5E9; color:var(--green-dk)}
+.key-status.no{background:#F5EFE0; color:#8a6d00}
+.key-status.bad{background:#FBE5E5; color:var(--red-dk)}
+
+/* === Nav: brick tabs === */
+nav{
+  position:fixed; bottom:0; inset-inline:0; z-index:50;
+  background:#fff; border-top:3px solid var(--ink);
+  padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+  display:flex; gap:6px; justify-content:center;
+}
+nav button{
+  flex:1; max-width:120px; min-height:52px; border:none; cursor:pointer;
+  font-family:inherit; font-weight:700; font-size:.74rem; color:var(--ink);
+  background:#F1F0EA; border-radius:8px; position:relative; padding-top:12px;
+  box-shadow:0 3px 0 #C9C7BE; transition:transform .12s, box-shadow .12s;
+}
+nav button::before{ /* stud on each tab */
+  content:""; position:absolute; top:3px; right:50%; transform:translateX(50%);
+  width:16px; height:6px; border-radius:3px 3px 0 0; background:inherit;
+  background:#DBD9D0; box-shadow:var(--stud-shadow);
+}
+nav button .ic{display:block; font-size:1.05rem; line-height:1.15}
+nav button.active{color:#fff; transform:translateY(1px)}
+nav button.active::before{background:rgba(255,255,255,.4)}
+nav button[data-tab="plan"].active{background:var(--blue); box-shadow:0 3px 0 var(--blue-dk)}
+nav button[data-tab="result"].active{background:var(--green); box-shadow:0 3px 0 var(--green-dk)}
+nav button[data-tab="bom"].active{background:var(--yellow); color:var(--ink); box-shadow:0 3px 0 var(--yellow-dk)}
+nav button[data-tab="order"].active{background:var(--red); box-shadow:0 3px 0 var(--red-dk)}
+nav button[data-tab="projects"].active{background:var(--ink); box-shadow:0 3px 0 #000}
+
+/* === Layout === */
+main{max-width:980px; margin:0 auto; padding:16px 14px}
+section.tab{display:none; animation:pop .25s ease}
+section.tab.on{display:block}
+@keyframes pop{from{opacity:0; transform:translateY(8px)} to{opacity:1}}
+
+.card{
+  background:var(--card); border-radius:var(--radius); padding:16px;
+  box-shadow:var(--brick-shadow); margin-bottom:14px; border:1px solid var(--line);
+}
+.card h2{font-size:1.05rem; font-weight:900; margin-bottom:10px; display:flex; align-items:center; gap:8px}
+.card h2 .dot{width:14px; height:14px; border-radius:4px; display:inline-block; box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+label{display:block; font-weight:700; font-size:.85rem; margin:12px 0 5px}
+label:first-of-type{margin-top:0}
+textarea,input[type=text],input[type=number],select{
+  width:100%; font-family:inherit; font-size:.95rem; padding:11px 12px;
+  border:2px solid var(--line); border-radius:8px; background:#FCFBF8; color:var(--ink);
+  transition:border-color .15s;
+}
+textarea:focus,input:focus,select:focus{outline:none; border-color:var(--blue)}
+textarea{min-height:110px; resize:vertical}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+@media(max-width:480px){.grid2{grid-template-columns:1fr}}
+.hint{font-size:.75rem; color:#777; margin-top:4px}
+
+/* buttons */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  font-family:inherit; font-weight:900; font-size:1rem; color:#fff; cursor:pointer;
+  border:none; border-radius:10px; padding:14px 22px; min-height:48px; position:relative;
+  transition:transform .1s, box-shadow .1s; width:100%;
+}
+.btn:active{transform:translateY(3px)}
+.btn.red{background:var(--red); box-shadow:0 4px 0 var(--red-dk)}
+.btn.blue{background:var(--blue); box-shadow:0 4px 0 var(--blue-dk)}
+.btn.green{background:var(--green); box-shadow:0 4px 0 var(--green-dk)}
+.btn.yellow{background:var(--yellow); color:var(--ink); box-shadow:0 4px 0 var(--yellow-dk)}
+.btn.ghost{background:#F1F0EA; color:var(--ink); box-shadow:0 3px 0 #C9C7BE; font-weight:700}
+.btn:disabled{opacity:.55; cursor:wait}
+.btn.sm{width:auto; padding:9px 14px; font-size:.82rem; min-height:40px; border-radius:8px}
+.btn-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+
+/* image drop */
+#drop{
+  border:3px dashed var(--line); border-radius:10px; padding:18px; text-align:center;
+  color:#888; font-size:.85rem; cursor:pointer; background:#FCFBF8; transition:border-color .15s;
+}
+#drop.has{border-style:solid; border-color:var(--green); color:var(--ink)}
+#imgPrev{max-width:100%; max-height:220px; border-radius:8px; margin-top:10px; display:none}
+
+/* loading bricks */
+#loader{display:none; text-align:center; padding:26px 10px}
+#loader.on{display:block}
+.build-anim{display:flex; gap:6px; justify-content:center; align-items:flex-end; height:46px}
+.build-anim i{width:26px; height:16px; border-radius:4px; box-shadow:var(--stud-shadow); animation:stack 1.1s infinite}
+.build-anim i:nth-child(1){background:var(--red)} .build-anim i:nth-child(2){background:var(--yellow); animation-delay:.15s}
+.build-anim i:nth-child(3){background:var(--blue); animation-delay:.3s} .build-anim i:nth-child(4){background:var(--green); animation-delay:.45s}
+@keyframes stack{0%,100%{transform:translateY(0)} 50%{transform:translateY(-16px)}}
+#loaderTxt{font-weight:700; margin-top:12px; font-size:.9rem}
+
+/* === 3D viewer === */
+#vwrap{position:relative}
+#vCanvas3d{width:100%; height:340px; display:block; border-radius:8px; background:linear-gradient(#DFEDF9,#F6F5EF 70%); border:1px solid var(--line); touch-action:none; cursor:grab}
+#vCanvas{width:100%; height:300px; display:block; border-radius:8px; background:linear-gradient(#EAF2FA,#F6F5EF 65%); border:1px solid var(--line); touch-action:none; cursor:grab}
+.v-ctl{display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap}
+.v-btn{width:44px; height:44px; border:none; border-radius:8px; background:#F1F0EA; box-shadow:0 3px 0 #C9C7BE; font-size:1.05rem; cursor:pointer; font-weight:900}
+.v-btn:active{transform:translateY(2px)}
+.v-layer{flex:1; display:flex; align-items:center; gap:8px; min-width:170px; font-size:.78rem; font-weight:700}
+.v-layer input[type=range]{flex:1; accent-color:var(--red); height:30px}
+#vHint{font-size:.72rem; color:#888; margin-top:6px}
+
+/* result stats */
+.stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(105px,1fr)); gap:8px; margin-bottom:14px}
+.stat{
+  border-radius:8px; padding:10px 8px 8px; color:#fff; text-align:center; position:relative;
+  box-shadow:0 3px 0 rgba(0,0,0,.25);
+}
+.stat b{display:block; font-size:1.25rem; font-weight:900}
+.stat span{font-size:.68rem; font-weight:700; opacity:.9}
+.diff-bricks{display:inline-flex; gap:3px; vertical-align:middle}
+.diff-bricks i{width:11px; height:8px; border-radius:2px; background:rgba(255,255,255,.35)}
+.diff-bricks i.f{background:#fff}
+.chip{display:inline-block; background:#F1F0EA; border-radius:99px; padding:5px 12px; font-size:.78rem; font-weight:700; margin:3px 2px; box-shadow:0 2px 0 #C9C7BE}
+.phase{border-inline-start:6px solid var(--blue); background:#F8F7F2; border-radius:8px; padding:10px 12px; margin-bottom:8px}
+.phase h3{font-size:.92rem; font-weight:900}
+.phase p{font-size:.83rem; color:var(--ink-soft); margin-top:3px}
+.phase .pc{font-size:.72rem; color:#888; font-weight:700}
+ul.tips{padding-inline-start:18px; font-size:.86rem; line-height:1.7}
+
+/* BOM table */
+.bom-tools{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px}
+.bom-tools select,.bom-tools input{width:auto; flex:1; min-width:120px}
+.tbl-wrap{overflow-x:auto; border-radius:8px; border:1px solid var(--line)}
+table{width:100%; border-collapse:collapse; font-size:.83rem; min-width:520px; background:#fff}
+th{background:var(--ink); color:#fff; font-size:.72rem; padding:9px 8px; text-align:right; position:sticky; top:0}
+td{padding:7px 8px; border-bottom:1px solid #EEE; vertical-align:middle}
+tr:nth-child(even) td{background:#FAF9F5}
+.sw{width:20px; height:20px; border-radius:5px; border:1px solid rgba(0,0,0,.2); display:inline-block; vertical-align:middle; box-shadow:inset 0 -2px 0 rgba(0,0,0,.15)}
+td input.qty{width:62px; padding:5px 6px; text-align:center; font-weight:700}
+.del-row{background:none; border:none; color:var(--red); font-weight:900; cursor:pointer; font-size:1rem}
+.bom-total{display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-weight:900; flex-wrap:wrap; gap:8px}
+.spare-box{display:flex; align-items:center; gap:8px; font-size:.82rem; font-weight:700}
+.spare-box input{width:70px}
+
+/* order cards */
+.sup{border:2px solid var(--line); border-radius:10px; padding:14px; margin-bottom:12px; background:#fff}
+.sup h3{display:flex; align-items:center; gap:8px; font-size:.98rem; font-weight:900}
+.sup .badge{font-size:.65rem; color:#fff; padding:3px 9px; border-radius:99px; font-weight:700}
+.sup p{font-size:.8rem; color:var(--ink-soft); margin:7px 0 10px; line-height:1.55}
+.price-line{display:flex; justify-content:space-between; font-size:.85rem; padding:5px 0; border-bottom:1px dashed var(--line)}
+.price-line.total{font-weight:900; font-size:1rem; border-bottom:none}
+pre#xmlPrev{background:#1B1B1B; color:#B8E986; font-size:.68rem; padding:12px; border-radius:8px; overflow:auto; max-height:180px; direction:ltr; text-align:left; display:none}
+
+/* projects */
+.proj{display:flex; align-items:center; gap:10px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:8px}
+.proj .pico{width:38px; height:30px; border-radius:6px; flex-shrink:0; box-shadow:inset 0 -3px 0 rgba(0,0,0,.25)}
+.proj .meta{flex:1; min-width:0}
+.proj .meta b{display:block; font-size:.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.proj .meta span{font-size:.72rem; color:#888}
+.empty{text-align:center; color:#999; padding:30px 10px; font-size:.9rem}
+.toast{
+  position:fixed; bottom:calc(90px + env(safe-area-inset-bottom)); right:50%; transform:translateX(50%);
+  background:var(--ink); color:#fff; padding:11px 20px; border-radius:99px; font-weight:700;
+  font-size:.85rem; z-index:99; box-shadow:0 6px 18px rgba(0,0,0,.35); opacity:0; pointer-events:none;
+  transition:opacity .25s;
+}
+.toast.on{opacity:1}
+@media(min-width:760px){
+  nav{position:sticky; top:64px; bottom:auto; border-top:none; border-bottom:3px solid var(--ink); max-width:980px; margin:0 auto; border-radius:0 0 14px 14px}
+  body{padding-bottom:30px}
+  .toast{bottom:30px}
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="hd-row">
+    <div class="logo-brick"><span class="studs"><i></i><i></i><i></i></span>LEGO<br>PLANNER</div>
+    <div class="hd-titles">
+      <h1>Master Builder Studio</h1>
+      <p>תכנון · רשימת חלקים · הזמנה מדויקת · <b id="buildTag"></b></p>
+    </div>
+    <div id="saveInd">✔ נשמר</div>
+    <button id="setBtn" title="הגדרות API" aria-label="הגדרות">⚙️</button>
+  </div>
+</header>
+
+<nav>
+  <button data-tab="plan" class="active"><span class="ic">🧱</span>תכנון</button>
+  <button data-tab="result"><span class="ic">📐</span>תוכנית</button>
+  <button data-tab="bom"><span class="ic">🔩</span>חלקים</button>
+  <button data-tab="order"><span class="ic">🛒</span>הזמנה</button>
+  <button data-tab="projects"><span class="ic">📁</span>פרויקטים</button>
+</nav>
+
+<main>
+
+<!-- ===== TAB: PLAN (input) ===== -->
+<section class="tab on" id="tab-plan">
+  <div class="card">
+    <h2><span class="dot" style="background:var(--red)"></span>מה בונים היום?</h2>
+    <label for="desc">תיאור הדגם</label>
+    <textarea id="desc" placeholder="לדוגמה: ג'יפ שטח 4x4 בסגנון טכניק עם מתלים קפיציים, בערך 30 ס״מ, בצבעי כתום ושחור. או: בית קפה קטן לרחוב City עם קומה שנייה ומרפסת."></textarea>
+
+    <label>או העלה תמונה (השראה / דבר אמיתי להמרה ללגו)</label>
+    <div id="drop">📷 לחץ לבחירת תמונה או גרור לכאן<img id="imgPrev" alt="תצוגה מקדימה"></div>
+    <input type="file" id="imgFile" accept="image/*" hidden>
+
+    <label for="pArch">סוג דגם (ארכיטיפ)</label>
+    <select id="pArch">
+      <option value="auto">🤖 זיהוי אוטומטי מהתיאור</option>
+      <option value="formula">🏎 פורמולה 1</option>
+      <option value="crane">🏗 מנוף נייד</option>
+      <option value="excavator">🚜 מחפרון זחלים</option>
+      <option value="helicopter">🚁 מסוק</option>
+      <option value="train">🚂 רכבת (קטר+קרון)</option>
+      <option value="truck">🚚 משאית</option>
+      <option value="motorcycle">🏍 אופנוע</option>
+      <option value="car">🚗 מכונית</option>
+      <option value="technic">⚙️ רכב טכניק</option>
+      <option value="pirate">🏴‍☠️ ספינת פיראטים</option>
+      <option value="boat">🚢 ספינה</option>
+      <option value="plane">✈️ מטוס</option>
+      <option value="space">🚀 חללית</option>
+      <option value="house">🏠 בית</option>
+      <option value="castle">🏰 טירה</option>
+      <option value="dino">🦖 דינוזאור</option>
+      <option value="animal">🐾 חיה</option>
+      <option value="figure">🗿 דמות מפוסלת</option>
+      <option value="robot">🤖 רובוט</option>
+      <option value="tower">🗼 מגדל / חופשי</option>
+    </select>
+    <label for="pMode">מצב יצירה</label>
+    <select id="pMode">
+      <option value="model">דגם תלת-ממדי (AI / מנוע מומחה)</option>
+      <option value="mosaic">🖼 פסיפס מתמונה (LEGO Art) — דיוק פיקסל</option>
+    </select>
+    <div id="mosaicOpts" style="display:none; background:#F8F7F2; border-radius:8px; padding:10px; margin-top:8px">
+      <div class="grid2">
+        <div>
+          <label for="mSize">גודל הפסיפס (סטאדים)</label>
+          <select id="mSize">
+            <option value="32x32">32×32 — כמו LEGO Art (1,024 אריחים)</option>
+            <option value="48x48" selected>48×48 — מפורט (2,304)</option>
+            <option value="64x64">64×64 — מקסימלי (4,096)</option>
+            <option value="48x64">48×64 — פורטרט</option>
+            <option value="64x48">64×48 — לרוחב</option>
+          </select>
+        </div>
+        <div>
+          <label for="mPal">פלטת צבעים</label>
+          <select id="mPal">
+            <option value="rich">עשירה — 21 צבעי לגו</option>
+            <option value="full">מורחבת — 30 צבעים (איכות מקסימלית)</option>
+            <option value="gray">גווני אפור — 5 צבעים (סגנון פורטרט)</option>
+          </select>
+        </div>
+      </div>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:10px">
+        <input type="checkbox" id="mDither" checked style="width:20px; height:20px">
+        Dithering (החלקת מעברי צבע — מומלץ לתמונות)
+      </label>
+    </div>
+    <div class="grid2" style="margin-top:6px">
+      <div>
+        <label for="pTheme">סגנון</label>
+        <select id="pTheme">
+          <option value="auto">זיהוי אוטומטי</option>
+          <option value="basic">קלאסי פשוט (4+)</option>
+          <option value="city">City / בניינים ורכבים</option>
+          <option value="creator">Creator / דגם תצוגה</option>
+          <option value="technic">Technic — מכני</option>
+          <option value="star-wars">חלל / Sci-Fi</option>
+          <option value="castle">טירות ופנטזיה</option>
+        </select>
+      </div>
+      <div>
+        <label for="pSize">גודל משוער</label>
+        <select id="pSize">
+          <option value="auto">שהמומחה יחליט</option>
+          <option value="mini">מיני (עד 100 חלקים)</option>
+          <option value="small">קטן (100–300)</option>
+          <option value="medium">בינוני (300–700)</option>
+          <option value="large">גדול (700–1500)</option>
+          <option value="xl">ענק (1500+)</option>
+        </select>
+      </div>
+      <div>
+        <label for="pDiff">רמת קושי רצויה</label>
+        <select id="pDiff">
+          <option value="auto">אוטומטי</option>
+          <option value="1">1 — פעוטות/מתחילים</option>
+          <option value="2">2 — קל</option>
+          <option value="3">3 — בינוני</option>
+          <option value="4">4 — מתקדם</option>
+          <option value="5">5 — מומחה</option>
+        </select>
+      </div>
+      <div>
+        <label for="pBudget">תקציב חלקים (₪, אופציונלי)</label>
+        <input type="number" id="pBudget" min="0" placeholder="ללא הגבלה">
+      </div>
+    </div>
+
+    <label style="display:flex; align-items:center; gap:8px; margin-top:14px">
+      <input type="checkbox" id="pMotor" style="width:20px; height:20px">
+      דגם ממונע (Powered Up / Power Functions)
+    </label>
+    <label for="pColors">העדפת צבעים (אופציונלי)</label>
+    <input type="text" id="pColors" placeholder="למשל: אדום-שחור, או צבעי יער">
+
+    <div id="loader">
+      <div class="build-anim"><i></i><i></i><i></i><i></i></div>
+      <div id="loaderTxt">המומחה מתכנן את הדגם...</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn red" id="goBtn">🧱 תכנן לי את הדגם</button>
+    </div>
+    <p class="hint">הניתוח נעשה עם Claude AI — תיאור מפורט יותר = רשימת חלקים מדויקת יותר.</p>
+  </div>
+</section>
+
+<!-- ===== TAB: RESULT (plan) ===== -->
+<section class="tab" id="tab-result">
+  <div id="resEmpty" class="card empty">עדיין אין תוכנית. עבור ללשונית <b>תכנון</b> ותאר מה לבנות 🧱</div>
+  <div id="resWrap" style="display:none">
+    <div class="card">
+      <h2><span class="dot" style="background:var(--green)"></span><span id="rName"></span></h2>
+      <div class="stats" id="rStats"></div>
+      <p id="rOverview" style="font-size:.9rem; line-height:1.65"></p>
+      <div id="rTech" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <h2><span class="dot" style="background:var(--red)"></span>תצוגת הדגם הסופי</h2>
+      <div id="vEmpty" class="empty" style="padding:16px">
+        <button class="btn yellow" id="genPrev" style="width:auto">🎨 צור תצוגת דגם</button>
+      </div>
+      <div id="vwrap" style="display:none">
+        <canvas id="vCanvas3d" style="display:none"></canvas>
+        <canvas id="vCanvas"></canvas>
+        <div class="v-ctl">
+          <button class="v-btn" id="vRot" title="סובב">🔄</button>
+          <button class="v-btn" id="vZin" title="הגדל">➕</button>
+          <button class="v-btn" id="vZout" title="הקטן">➖</button>
+          <button class="v-btn" id="vRegen" title="נסה פריסת AI חלופית">♻️</button>
+          <button class="btn red sm" id="boxArt">🎁 אריזת לגו</button>
+          <button class="btn blue sm" id="dlLdr" style="margin-inline-start:auto">📐 קובץ ל-Studio</button>
+        </div>
+        <div class="v-ctl" style="background:#F8F7F2; border-radius:8px; padding:8px">
+          <button class="v-btn" id="vPrev" title="שלב קודם">⏭</button>
+          <button class="v-btn" id="vPlay" title="נגן הרכבה">▶️</button>
+          <button class="v-btn" id="vNext" title="שלב הבא">⏮</button>
+          <div class="v-layer">🧱 <input type="range" id="vLayer" min="1" max="10" value="10"><span id="vLayerN" style="min-width:52px; text-align:center; font-weight:900"></span></div>
+        </div>
+        <div id="vStepInfo" style="font-size:.8rem; font-weight:700; margin-top:6px; color:var(--blue-dk)"></div>
+        <img id="boxArtImg" style="display:none; width:100%; border-radius:10px; margin-top:10px; box-shadow:var(--brick-shadow)" alt="אריזת לגו">
+        <div id="vHint">מצב הרכבה: ▶️ מנגן שלב-אחר-שלב · הלבנים החדשות בכל שלב מודגשות בזהב · גרור לסיבוב</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2><span class="dot" style="background:var(--blue)"></span>שלבי בנייה</h2>
+      <div id="rPhases"></div>
+    </div>
+    <div class="card" id="rMotorCard" style="display:none">
+      <h2><span class="dot" style="background:var(--orange)"></span>מינוע</h2>
+      <div id="rMotor" style="font-size:.88rem; line-height:1.6"></div>
+    </div>
+    <div class="card">
+      <h2><span class="dot" style="background:var(--yellow)"></span>טיפים של מאסטר</h2>
+      <ul class="tips" id="rTips"></ul>
+      <div id="rAlts" style="margin-top:10px"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn blue" onclick="showTab('bom')">🔩 לרשימת החלקים</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TAB: BOM ===== -->
+<section class="tab" id="tab-bom">
+  <div class="card">
+    <h2><span class="dot" style="background:var(--yellow)"></span>רשימת חלקים (BOM)</h2>
+    <div class="bom-tools">
+      <select id="bomFilter"><option value="">כל הקטגוריות</option></select>
+      <input type="text" id="bomSearch" placeholder="חיפוש חלק...">
+      <button class="btn ghost sm" id="addRowBtn">+ הוסף חלק</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>צבע</th><th>מק"ט</th><th>שם החלק</th><th>קטגוריה</th><th>כמות</th><th></th></tr></thead>
+        <tbody id="bomBody"><tr><td colspan="6" class="empty">אין חלקים עדיין — צור תוכנית בלשונית תכנון</td></tr></tbody>
+      </table>
+    </div>
+    <div class="bom-total">
+      <div class="spare-box">רזרבה <input type="number" id="spare" value="5" min="0" max="30">%</div>
+      <div>סה"כ: <span id="bomTotal" style="color:var(--red)">0</span> חלקים (כולל רזרבה: <span id="bomTotalSpare">0</span>)</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn red" onclick="showTab('order')">🛒 צור הזמנה מהספקים</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TAB: ORDER ===== -->
+<section class="tab" id="tab-order">
+  <div class="card">
+    <h2><span class="dot" style="background:var(--red)"></span>אומדן עלות</h2>
+    <div id="priceBox"></div>
+    <p class="hint">אומדן לפי מחירים ממוצעים ב-BrickLink לחלק חדש. מחיר סופי תלוי בחנות ובמשלוח. הזמנה מעל ~$75 לישראל חייבת מע"מ.</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="dot" style="background:var(--blue)"></span>הזמנה מספקים</h2>
+
+    <div class="sup">
+      <h3>🟦 BrickLink <span class="badge" style="background:var(--blue)">מומלץ · המבחר הגדול בעולם</span></h3>
+      <p>הורד קובץ Wanted List, העלה ב-BrickLink (Wanted → Upload → From XML), ולחץ "Buy All" — האתר יפצל אוטומטית לחנויות הזולות ששולחות לישראל.</p>
+      <div class="btn-row">
+        <button class="btn blue sm" id="dlXml">⬇ הורד Wanted List XML</button>
+        <button class="btn ghost sm" id="cpXml">📋 העתק XML</button>
+        <button class="btn ghost sm" id="pvXml">👁 תצוגה</button>
+        <a class="btn ghost sm" href="https://www.bricklink.com/v3/wanted/upload.page" target="_blank" rel="noopener" style="text-decoration:none">↗ פתח דף העלאה</a>
+      </div>
+      <pre id="xmlPrev"></pre>
+    </div>
+
+    <div class="sup">
+      <h3>🦉 BrickOwl <span class="badge" style="background:var(--green)">גיבוי נוח</span></h3>
+      <p>הורד CSV וייבא ב-Wishlist → Import. מקבל מק"טי BrickLink ושמות צבע כפי שהם.</p>
+      <div class="btn-row">
+        <button class="btn green sm" id="dlCsv">⬇ הורד CSV ל-BrickOwl</button>
+        <a class="btn ghost sm" href="https://www.brickowl.com/wishlist" target="_blank" rel="noopener" style="text-decoration:none">↗ פתח Wishlist</a>
+      </div>
+    </div>
+
+    <div class="sup">
+      <h3>🟨 LEGO Pick a Brick — רשמי <span class="badge" style="background:var(--yellow); color:var(--ink)">חלקים חדשים מלגו</span></h3>
+      <p>מתאים לחלקים סטנדרטיים בצבעים עדכניים. לחץ על חלק ברשימה למטה כדי לחפש אותו ישירות באתר לגו.</p>
+      <div id="pabLinks"></div>
+    </div>
+
+    <div class="sup">
+      <h3>🧧 Webrick <span class="badge" style="background:var(--orange)">זול ל-MOC גדולים</span></h3>
+      <p>ספק מוזל לכמויות גדולות (משלוח 2–4 שבועות). חפש לפי אותם מק"טים מהרשימה.</p>
+      <div class="btn-row">
+        <a class="btn ghost sm" href="https://www.webrick.com" target="_blank" rel="noopener" style="text-decoration:none">↗ webrick.com</a>
+      </div>
+    </div>
+
+    <div class="sup">
+      <h3>📐 BrickLink Studio — דגם אמיתי + הוראות הרכבה <span class="badge" style="background:var(--blue)">חינם · רשמי</span></h3>
+      <p>הורד את קובץ ה-Studio (בלשונית התוכנית, בכרטיס התצוגה), פתח אותו ב-<b>BrickLink Studio</b> — ותקבל את הדגם כלגו אמיתי ברנדר מלא. שם: Instructions → Generate ליצירת <b>חוברת הוראות הרכבה שלב-אחר-שלב להדפסה</b>, בדיוק כמו חוברת של סט קנוי.</p>
+      <div class="btn-row">
+        <a class="btn ghost sm" href="https://www.bricklink.com/v3/studio/download.page" target="_blank" rel="noopener" style="text-decoration:none">↗ הורד את Studio (חינם)</a>
+      </div>
+    </div>
+
+    <div class="sup">
+      <h3>🧠 אסטרטגיית פיצול חכמה</h3>
+      <p id="splitAdvice">צור תוכנית כדי לקבל המלצת פיצול בין ספקים.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TAB: PROJECTS ===== -->
+<section class="tab" id="tab-projects">
+  <div class="card">
+    <h2><span class="dot" style="background:var(--ink)"></span>הפרויקטים שלי</h2>
+    <div id="projList"></div>
+    <div class="btn-row">
+      <button class="btn ghost sm" id="expAll">⬇ ייצוא הכל (JSON)</button>
+      <button class="btn ghost sm" id="impBtn">⬆ ייבוא</button>
+      <input type="file" id="impFile" accept="application/json" hidden>
+      <button class="btn yellow sm" id="newProj">🧱 פרויקט חדש</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ===== Settings modal ===== -->
+<div id="modalBg">
+  <div id="modal">
+    <button class="close" id="modalClose" aria-label="סגור">✕</button>
+    <h2><span class="dot" style="background:var(--blue); width:14px; height:14px; border-radius:4px; display:inline-block"></span>הגדרות API</h2>
+    <p style="font-size:.82rem; color:var(--ink-soft); line-height:1.6; margin-bottom:10px">
+      <b>בתוך Claude:</b> לא צריך מפתח — הכל עובד אוטומטית.<br>
+      <b>מחוץ ל-Claude</b> (קובץ מקומי / אתר): הזן מפתח מ-
+      <a href="https://platform.claude.com" target="_blank" rel="noopener">platform.claude.com</a>.
+      המפתח נשמר רק בדפדפן שלך (localStorage) ולא נשלח לשום מקום מלבד Anthropic.
+    </p>
+    <label for="apiKey" style="margin-top:0">Anthropic API Key</label>
+    <div class="key-row">
+      <input type="password" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off">
+      <button class="btn ghost sm" id="keyEye" title="הצג/הסתר">👁</button>
+    </div>
+    <div class="key-status no" id="keyStatus">מצב: ללא מפתח — מתאים לשימוש בתוך Claude</div>
+    <div style="font-size:.7rem; color:#999; margin-top:8px" id="buildTag2"></div>
+    <div class="btn-row">
+      <button class="btn blue sm" id="keySave">💾 שמור מפתח</button>
+      <button class="btn green sm" id="keyTest">🔌 בדוק חיבור</button>
+      <button class="btn ghost sm" id="keyDel">🗑 מחק מפתח</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+/* === VERSION — עדכן בכל שינוי! === */
+const APP_BUILD='v10.0 · build 2026-07-25.11';
+/* === STATE === */
+const AUTO_SAVE_KEY='lego_mb_v1';
+let S={projects:{},currentId:null,ui:{tab:'plan'}};
+let imgData=null, imgType=null;
+
+function uid(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function cur(){return S.currentId?S.projects[S.currentId]:null}
+function ensureProject(){
+  if(!cur()){const id=uid();S.projects[id]={id,name:'פרויקט חדש',created:Date.now(),input:{},plan:null,bom:[],spare:5};S.currentId=id}
+  return cur();
+}
+function saveState(){
+  try{
+    const p=cur(); if(p) captureInputs(p);
+    localStorage.setItem(AUTO_SAVE_KEY,JSON.stringify({...S,_savedAt:new Date().toISOString()}));
+    setInd('saved');
+  }catch(e){setInd('err')}
+}
+function setInd(st){
+  const el=document.getElementById('saveInd');
+  el.className=st==='saving'?'saving':st==='err'?'err':'';
+  el.textContent=st==='saving'?'💾 שומר...':st==='err'?'⚠ שגיאת שמירה':'✔ נשמר';
+}
+function loadState(){
+  try{const r=localStorage.getItem(AUTO_SAVE_KEY); if(r){const d=JSON.parse(r); if(d.projects) S=d}}catch(e){}
+}
+setInterval(()=>{setInd('saving');saveState()},3000);
+window.addEventListener('beforeunload',saveState);
+
+function captureInputs(p){
+  p.input={desc:v('desc'),theme:v('pTheme'),size:v('pSize'),diff:v('pDiff'),
+    budget:v('pBudget'),motor:document.getElementById('pMotor').checked,colors:v('pColors'),
+    mode:v('pMode'),arch:v('pArch'),mSize:v('mSize'),mPal:v('mPal'),mDither:document.getElementById('mDither').checked};
+  p.spare=parseInt(v('spare'))||5;
+}
+function restoreInputs(p){
+  sv('desc',p.input.desc); sv('pTheme',p.input.theme||'auto'); sv('pSize',p.input.size||'auto');
+  sv('pDiff',p.input.diff||'auto'); sv('pBudget',p.input.budget); sv('pColors',p.input.colors);
+  document.getElementById('pMotor').checked=!!p.input.motor; sv('spare',p.spare??5);
+  sv('pMode',p.input.mode||'model'); sv('pArch',p.input.arch||'auto'); sv('mSize',p.input.mSize||'48x48'); sv('mPal',p.input.mPal||'rich');
+  document.getElementById('mDither').checked=p.input.mDither!==false;
+  document.getElementById('mosaicOpts').style.display=(p.input.mode==='mosaic')?'block':'none';
+}
+function v(id){return document.getElementById(id).value||''}
+function sv(id,val){document.getElementById(id).value=val??''}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove('on'),2400)}
+
+/* === Tabs === */
+function showTab(name){
+  S.ui.tab=name;
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  document.querySelectorAll('section.tab').forEach(s=>s.classList.toggle('on',s.id==='tab-'+name));
+  if(name==='result') renderResult();
+  if(name==='bom') renderBOM();
+  if(name==='order') renderOrder();
+  if(name==='projects') renderProjects();
+  window.scrollTo({top:0});
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+
+/* === DESIGN: BrickLink colors === */
+const BL_COLORS={1:['White','#FFFFFF'],49:['Very Light Gray','#E6E3DA'],86:['Light Bluish Gray','#A0A5A9'],
+85:['Dark Bluish Gray','#6C6E68'],11:['Black','#212121'],59:['Dark Red','#720E0F'],5:['Red','#B40000'],
+4:['Orange','#FE8A18'],3:['Yellow','#F2CD37'],33:['Bright Light Yellow','#FFF03A'],34:['Lime','#BBE90B'],
+6:['Green','#237841'],36:['Bright Green','#4B9F4A'],288:['Dark Green','#184632'],40:['Dark Turquoise','#008F9B'],
+156:['Sand Green','#A0BCAC'],63:['Dark Blue','#0A3463'],7:['Blue','#0055BF'],42:['Medium Blue','#5A93DB'],
+105:['Bright Light Blue','#9FC3E9'],55:['Sand Blue','#6074A1'],24:['Purple','#81007B'],71:['Magenta','#923978'],
+47:['Dark Pink','#C870A0'],23:['Pink','#FC97AC'],88:['Reddish Brown','#582A12'],8:['Brown','#583927'],
+69:['Dark Tan','#958A73'],2:['Tan','#E4CD9E'],90:['Light Nougat','#F6D7B3'],150:['Medium Nougat','#AA7D55'],
+12:['Trans-Clear','#FCFCFC'],17:['Trans-Red','#C91A09'],13:['Trans-Light Blue','#AEEFEC'],20:['Trans-Green','#84B68D'],19:['Trans-Yellow','#F5CD2F']};
+const COLOR_LIST=Object.entries(BL_COLORS).map(([id,[n]])=>`${id}=${n}`).join(', ');
+
+/* === AI === */
+const SIZE_MAP={mini:'up to 100 pieces',small:'100-300 pieces',medium:'300-700 pieces',large:'700-1500 pieces',xl:'over 1500 pieces'};
+const PARTS_HINT='bricks 3005,3004,3622,3010,3009,3008,3003,3002,3001,2456,3007,3006; plates 3024,3023,3623,3710,3666,3460,3022,3021,3020,3795,3034,3031,3035,3036; tiles 3070b,3069b,63864,2431,6636,3068b,87079; slopes 54200,3040,3039,3037,85984,4286,3660; SNOT 99780,99781,87087,4070,3794,87580,4085d,32952; round 3062b,4073,98138,4589,3941; Technic beams 32524,32316,40490,32525,41239,32278; pins 2780,3673,6558,32054; axles 3705,3706,3707,32073,60485; gears 10928,94925,3648,32270,32498; frames 32531,64179; wheels 55982,56145; minifig 3626c,973,970c00';
+function buildPromptA(inp){
+return `You are a world-class LEGO master builder. Design a buildable LEGO model. Return ONLY compact valid JSON, no markdown.
+REQUEST: ${inp.desc||'(infer from the attached image)'}
+Theme: ${inp.theme} | Size: ${inp.size==='auto'?'expert choice':SIZE_MAP[inp.size]} | Difficulty: ${inp.diff} | Motorized: ${inp.motor?'YES (Powered Up)':'no'} | Colors: ${inp.colors||'expert choice'} | Budget: ${inp.budget?inp.budget+' ILS (~0.35 ILS/piece)':'unlimited'}
+${imgData?'An image is attached — translate its shapes, proportions and colors faithfully into LEGO.':''}
+Keep it SHORT: overview max 50 Hebrew words, 3-5 phases (description max 20 words each), max 4 techniques, max 3 tips, max 2 alternatives. Hebrew text everywhere except part names.
+SCHEMA: {"name":str,"theme":"city|technic|creator|star-wars|castle|basic|other","difficulty":1-5,"estimatedHours":num,"ageRange":str,"dimensions":{"studsL":int,"studsW":int,"bricksH":int,"cm":str},"totalPieces":int,"overview":str,"techniques":[str],"phases":[{"title":str,"description":str,"pieces":int}],"palette":[blColorIds max 5 from: ${Object.keys(BL_COLORS).join(',')}],"motorization":{"needed":bool,"system":str,"components":[{"partNum":str,"name":str,"qty":int}]},"alternatives":[str],"tips":[str]}`;
+}
+function buildPromptB(pl,inp){
+return `LEGO parts list (BOM) for model "${pl.name}" — theme ${pl.theme}, ~${pl.totalPieces} pieces, main colors (BrickLink IDs): ${(pl.palette||[5,3,11]).join(',')}.
+Phases: ${(pl.phases||[]).map(f=>f.title+'('+f.pieces+')').join('; ')}
+${inp.colors?'User color preference: '+inp.colors:''}
+Return ONLY a JSON array, MAX 28 lines, each line: ["partNum",colorId,qty,"Part Name","Category"]
+Rules: ONLY real BrickLink part numbers, prefer: ${PARTS_HINT}. Never invent numbers. colorId only from: ${Object.keys(BL_COLORS).join(',')}. Categories: Bricks|Plates|Tiles|Slopes|SNOT|Technic|Gears|Wheels|Minifig|Special. Quantities sum ≈ ${pl.totalPieces} (group similar parts, realistic mix). No other text.`;
+}
+function extractJSON(txt,arr){
+  const clean=txt.replace(/```json|```/g,'').trim();
+  const a=arr?'[':'{', b=arr?']':'}';
+  const sliced=clean.slice(clean.indexOf(a),clean.lastIndexOf(b)+1);
+  try{return JSON.parse(sliced)}
+  catch(e){
+    if(arr){ /* הצלה: JSON קטוע — סוגרים או חותכים עד השורה השלמה האחרונה */
+      try{return JSON.parse(sliced+']')}catch(e2){}
+      const cut=sliced.lastIndexOf('],');
+      if(cut>1) return JSON.parse(sliced.slice(0,cut+1)+']');
+    }
+    throw e;
+  }
+}
+
+/* === VIEWER: isometric brick renderer (zero deps) === */
+function buildPromptC(pl,desc){
+return `Detailed 3D brick layout to visualize LEGO model "${pl.name}".
+ORIGINAL REQUEST: ${desc||pl.overview||''}
+Model: theme ${pl.theme}, footprint ${pl.dimensions?.studsL||16}x${pl.dimensions?.studsW||16} studs, height ${pl.dimensions?.bricksH||10} bricks. Colors (BrickLink IDs): ${(pl.palette||[5,3,11]).join(',')}.
+Build phases to represent: ${(pl.phases||[]).map(f=>f.title).join('; ')}
+Return ONLY a JSON array of 80-200 elements, each: [x,z,y,w,d,h,colorId] with OPTIONAL 8th value shape (0=box default, 1=wheel cylinder for vehicles, 2=slope wedge with 9th value dir 0=+x 1=-x 2=+z 3=-z for roofs/hoods/noses, 3=round column for chimneys/turrets/masts)
+x,z = stud position (integers, 0-based), y = level in brick heights (0=ground), w,d = footprint in studs, h = height in bricks (integer ≥1), colorId ONLY from: ${Object.keys(BL_COLORS).join(',')}.
+RULES: model the ACTUAL shape from the request — recognizable silhouette, correct proportions, key features (wheels/wings/windows/roof etc. as colored bricks), symmetry where natural. Bottom-up, no floating bricks, no overlaps, grid max 40x40x30. Place colors meaningfully (body vs details vs windows=trans 13). No other text.`;
+}
+/* === LDRAW EXPORT — פירוק ללבנים אמיתיות + קובץ ל-BrickLink Studio === */
+const LD_COLORS={5:4,3:14,7:1,6:2,11:0,1:15,86:71,85:72,4:25,88:70,8:6,2:19,69:28,63:272,59:320,36:10,34:27,288:288,40:3,23:13,47:5,24:22,71:26,90:78,150:84,42:73,105:212,55:379,156:378,49:503,33:226,12:47,17:36,13:43,19:46,20:34,21:42};
+function ldColor(bl){return LD_COLORS[bl]??71}
+function decomposeFootprint(w,d){ // מפרק שטח w×d ללבנים סטנדרטיות: רצועות ברוחב 2/1, מקטעים 4/3/2/1
+  const P={ '2,4':'3001','2,3':'3002','2,2':'3003','2,1':'3004r','1,4':'3010','1,3':'3622','1,2':'3004','1,1':'3005' };
+  const out=[]; let z=0;
+  while(z<d){
+    const sw=Math.min(2,d-z); let x=0;
+    while(x<w){
+      const cl=[4,3,2,1].find(c=>c<=w-x);
+      out.push({dx:x,dz:z,cl,sw,part:P[sw+','+cl]});
+      x+=cl;
+    }
+    z+=sw;
+  }
+  return out;
+}
+function makeLDR(){
+  const p=cur(); if(!p||!p.plan||!Array.isArray(p.plan.voxels)||!p.plan.voxels.length)return null;
+  const lines=['0 '+(p.name||'LEGO Model'),'0 Name: '+projName()+'.ldr','0 Author: LEGO Master Builder Studio','0 !LDRAW_ORG Model'];
+  let count=0;
+  p.plan.voxels.forEach(v=>{
+    const [X,Z,Y,W,D,H,C]=v, col=ldColor(C);
+    for(let lvl=0;lvl<H&&count<1500;lvl++){
+      decomposeFootprint(W,D).forEach(b=>{
+        if(count>=1500)return;
+        const rot=b.part.endsWith('r'), part=rot?b.part.slice(0,-1):b.part;
+        // מרכז הלבנה ב-LDU: סטאד=20, גובה לבנה=24, ציר Y כלפי מטה. טביעת הרגל ברשת: cl×sw תמיד
+        const cx=(X+b.dx+b.cl/2)*20, cz=(Z+b.dz+b.sw/2)*20;
+        const cy=-24*(Y+lvl);
+        const m=rot?'0 0 -1 0 1 0 1 0 0':'1 0 0 0 1 0 0 0 1';
+        lines.push(`1 ${col} ${cx} ${cy} ${cz} ${m} ${part}.dat`);
+        count++;
+      });
+    }
+  });
+  lines.push('0');
+  return {text:lines.join('\n'),bricks:count};
+}
+
+/* === AI-ARCHITECT — ה-AI מרכיב, ספריית הרכיבים בונה ברמת מוצר === */
+function compileAssembly(ops){
+  const V2=[];
+  const B=(x,z,y,w,d,h,c)=>V2.push([Math.round(x),Math.round(z),Math.max(0,Math.round(y)),Math.max(1,Math.round(w)),Math.max(1,Math.round(d)),Math.max(1,Math.round(h)),BL_COLORS[c]?+c:85]);
+  const SL=(x,z,y,w,d,h,c,dir)=>{const v=[Math.round(x),Math.round(z),Math.max(0,Math.round(y)),Math.max(1,Math.round(w)),Math.max(1,Math.round(d)),Math.max(1,Math.round(h)),BL_COLORS[c]?+c:85,2,[0,1,2,3].includes(+dir)?+dir:0];V2.push(v)};
+  const WH=(x,z,y,dm,wd,c)=>V2.push([Math.round(x),Math.round(z),Math.max(0,Math.round(y)),Math.max(1,Math.round(dm)),Math.max(1,Math.round(wd)),Math.max(1,Math.round(dm)),BL_COLORS[c]?+c:11,1]);
+  const RD=(x,z,y,dm,h,c)=>V2.push([Math.round(x),Math.round(z),Math.max(0,Math.round(y)),Math.max(1,Math.round(dm)),Math.max(1,Math.round(dm)),Math.max(1,Math.round(h)),BL_COLORS[c]?+c:85,3]);
+  const LIB={
+    box:p=>B(p.x||0,p.z||0,p.y||0,p.w||2,p.d||2,p.h||1,p.c),
+    slope:p=>SL(p.x||0,p.z||0,p.y||0,p.w||2,p.d||2,p.h||1,p.c,p.dir),
+    wheel:p=>WH(p.x||0,p.z||0,p.y||0,p.dm||2,p.wd||1,p.c??11),
+    column:p=>RD(p.x||0,p.z||0,p.y||0,p.dm||1,p.h||3,p.c),
+    chassis:p=>{const x=p.x||0,z=p.z||0,y=p.y||0,len=Math.min(28,p.len||14),wid=Math.min(10,p.wid||6),ax=Math.min(6,Math.max(2,p.axles||2)),dm=Math.min(3,p.dm||2);
+      for(let i=0;i<ax;i++){const px=x+1+Math.round(i*(len-dm-2)/Math.max(1,ax-1));WH(px,z,y,dm,1,11);WH(px,z+wid-1,y,dm,1,11)}
+      B(x+1,z+1,y,len-2,wid-2,1,p.c??85)},
+    cab:p=>{const x=p.x||0,z=p.z||0,y=p.y||1,w=p.w||3,d=p.d||6,h=p.h||3,gd=[0,1,2,3].includes(+p.glassDir)?+p.glassDir:0;
+      B(x,z,y,w,d,h,p.c??3);
+      const gx=gd===0?x+w:gd===1?x-1:x, gz=gd===2?z+d:gd===3?z-1:z+1;
+      SL(gd<2?gx:x, gd<2?z+1:gz, y+h-1, gd<2?1:w, gd<2?Math.max(1,d-2):1, 1, 13, gd)},
+    boom:p=>{const x=p.x||0,z=p.z||0,y=p.y||4,len=Math.min(14,p.len||9),w=Math.min(6,p.w||4);
+      for(let i=0;i<len;i++){const w3=Math.max(2,w-Math.floor(i/3));
+        B(x+i,z+Math.floor((w-w3)/2),y+i,2,w3,1,i%2?(p.c1??3):(p.c2??85))}},
+    cableHook:p=>{const x=p.x||0,z=p.z||0,top=p.topY||10,drop=Math.min(top-1,p.drop||5);
+      B(x,z,top-drop,1,1,drop,11); B(x,z,Math.max(0,top-drop-1),1,2,1,85)},
+    rotor:p=>{const x=p.x||0,z=p.z||0,y=p.y||5,len=Math.min(16,p.len||10);
+      RD(x,z,y,1,1,p.c??85); B(x-Math.floor(len/2),z,y+1,len,1,1,11); B(x,z-Math.floor(len/2),y+1,1,len,1,11)},
+    wingPair:p=>{const x=p.x||0,z=p.z||0,y=p.y||1,len=Math.min(8,p.len||4),d=Math.min(10,p.d||9);
+      B(x,z,y,len,d,1,p.c??1)},
+    tracks:p=>{const x=p.x||0,z=p.z||0,len=Math.min(20,p.len||12),gap=Math.min(8,p.gap||4);
+      B(x,z,0,len,2,2,11); B(x,z+2+gap,0,len,2,2,11);
+      for(let i=0;i<3;i++){RD(x+1+i*Math.floor((len-3)/2),z,0,2,2,85);RD(x+1+i*Math.floor((len-3)/2),z+2+gap,0,2,2,85)}},
+    outriggers:p=>{const y=p.y||1;[[p.x1??4],[p.x2??14]].forEach(([x])=>{
+      B(x,(p.z??0),y,1,1,1,p.c??3);B(x,(p.z??0),y-1,1,1,1,85);
+      B(x,(p.z2??7),y,1,1,1,p.c??3);B(x,(p.z2??7),y-1,1,1,1,85)})},
+    roof:p=>{const x=p.x||0,z=p.z||0,y=p.y||4,w=p.w||10,d=p.d||8,rows=Math.min(5,p.rows||3);
+      for(let k=0;k<rows;k++){SL(x,z+k,y+k,w,1,1,p.c??59,3);SL(x,z+d-1-k,y+k,w,1,1,p.c??59,2)}
+      if(d-2*rows>0)B(x,z+rows,y+rows-1,w,d-2*rows,1,p.c??59)},
+    fin:p=>SL(p.x||0,p.z||0,p.y||2,1,Math.min(4,p.d||1),Math.min(4,p.h||2),p.c??5,0),
+    ring:p=>RD(p.x||0,p.z||0,p.y||1,Math.min(6,p.dm||3),1,p.c??85)
+  };
+  (Array.isArray(ops)?ops:[]).slice(0,30).forEach(o=>{const fn=LIB[o&&o.c];if(fn)try{fn(o.p||{})}catch(e){}});
+  /* הזזה לתחום חיובי + סינון */
+  let mx=0,mz=0; V2.forEach(v=>{mx=Math.min(mx,v[0]);mz=Math.min(mz,v[1])});
+  V2.forEach(v=>{v[0]-=mx;v[1]-=mz});
+  return V2.filter(v=>v[3]>0&&v[4]>0&&v[5]>0).slice(0,400);
+}
+function buildPromptArch(pl,desc){
+return `You are a LEGO product architect. Compose "${desc||pl.name}" from a parametric component library. Return ONLY a JSON array of 8-25 ops, each {"c":"<component>","p":{...}}.
+Components (all coords integer studs, y=0 ground, grid<=36x36x28):
+chassis{x,z,y,len,wid,axles,dm,c} truck base with wheels · cab{x,z,y,w,d,h,c,glassDir} driver cab with windshield · box{x,z,y,w,d,h,c} · slope{x,z,y,w,d,h,c,dir} wedge (dir 0=+x 1=-x 2=+z 3=-z) · wheel{x,z,y,dm,wd,c} · column{x,z,y,dm,h,c} round · boom{x,z,y,len,w,c1,c2} diagonal telescopic arm rising toward +x · cableHook{x,z,topY,drop} · rotor{x,z,y,len,c} mast+cross blades · wingPair{x,z,y,len,d,c} · tracks{x,z,len,gap} caterpillar · outriggers{x1,x2,z,z2,y,c} · roof{x,z,y,w,d,rows,c} gable · fin{x,z,y,h,c} · ring{x,z,y,dm,c}.
+Colors = BrickLink IDs: ${Object.keys(BL_COLORS).join(',')} (13=glass). Use a cohesive 3-5 color scheme fitting the subject. Product-grade proportions, no floating parts, components must connect. No other text.`;
+}
+
+const V={vox:null,rot:0,zoom:1,step:99,steps:[],playing:null,drag:null};
+function buildSteps(){ // מקבץ לבנים לשלבי הרכבה: לפי גובה, מפוצל לצעדים נוחים
+  const idx=V.vox.map((v,i)=>i).sort((a,b)=>(V.vox[a][2]-V.vox[b][2])||((V.vox[a][0]+V.vox[a][1])-(V.vox[b][0]+V.vox[b][1])));
+  const byLevel={};
+  idx.forEach(i=>{const y=V.vox[i][2];(byLevel[y]=byLevel[y]||[]).push(i)});
+  V.steps=[];
+  Object.keys(byLevel).map(Number).sort((a,b)=>a-b).forEach(y=>{
+    const arr=byLevel[y];
+    const chunk=Math.max(10,Math.ceil(idx.length/40)); // תקרת ~40 שלבים גם בפסיפסים ענקיים
+    for(let i=0;i<arr.length;i+=chunk) V.steps.push(arr.slice(i,i+chunk));
+  });
+  if(!V.steps.length)V.steps=[[...idx]];
+}
+function stepBrickSet(){ // אינדקסים שנראים עד השלב הנוכחי + סט השלב הנוכחי להדגשה
+  const upto=new Set(), curr=new Set();
+  V.steps.slice(0,V.step).forEach((s,k)=>s.forEach(i=>{upto.add(i); if(k===V.step-1)curr.add(i)}));
+  return {upto,curr};
+}
+function vizColor(id){const c=BL_COLORS[id]||BL_COLORS[11];return c[1]}
+function shade(hex,f){
+  const n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  const m=x=>Math.max(0,Math.min(255,Math.round(x*f)));
+  return `rgb(${m(r)},${m(g)},${m(b)})`;
+}
+function rotXZ(x,z,w,d,W,D,r){ // מסובב מלבן בתוך רשת W×D ב-90° × r
+  for(let i=0;i<r;i++){const nx=z,nz=W-x-w;x=nx;z=nz;const t=w;w=d;d=t;const tw=W;W=D;D=tw}
+  return [x,z,w,d];
+}
+function renderVox2D(){
+  const cv=document.getElementById('vCanvas'); if(!cv||!V.vox||!V.vox.length)return;
+  const dpr=window.devicePixelRatio||1, cw=cv.clientWidth, ch=300;
+  cv.width=cw*dpr; cv.height=ch*dpr;
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,cw,ch);
+  let W=0,D=0,H=0;
+  V.vox.forEach(v=>{W=Math.max(W,v[0]+v[3]);D=Math.max(D,v[1]+v[4]);H=Math.max(H,v[2]+v[5])});
+  const {upto,curr}=stepBrickSet();
+  const bricks=V.vox.map((v,i)=>{
+    const [x,z,w,d]=rotXZ(v[0],v[1],v[3],v[4],W,D,V.rot);
+    return {x,z,y:v[2],w,d,h:v[5],c:v[6],i};
+  }).filter(b=>upto.has(b.i)).sort((a,b)=>((a.x+a.w+a.z+a.d)*100+(a.y+a.h))-((b.x+b.w+b.z+b.d)*100+(b.y+b.h)));
+  const RW=(V.rot%2)?D:W, RD=(V.rot%2)?W:D;
+  const isoW=(RW+RD)*0.86, isoH=(RW+RD)*0.5+H*1.2;
+  const U=Math.min(cw/(isoW+2),ch/(isoH+2))*V.zoom;
+  const ox=cw/2+((RD-RW)*0.86*U)/2;
+  const pt=(x,z,y)=>[ox+(x-z)*0.86*U, (ch-30) - (x+z)*0.5*U - y*1.2*U];
+  ctx.lineWidth=Math.max(.6,U*0.05); ctx.lineJoin='round';
+  /* רצפת בסיס עם סטאדים — כמו baseplate אמיתי */
+  ctx.fillStyle='rgba(120,150,110,.18)';
+  ctx.beginPath();
+  const g=[pt(-1,-1,0),pt(RW+1,-1,0),pt(RW+1,RD+1,0),pt(-1,RD+1,0)];
+  ctx.moveTo(g[0][0],g[0][1]);g.slice(1).forEach(p=>ctx.lineTo(p[0],p[1]));ctx.closePath();ctx.fill();
+  if(U>7){ctx.fillStyle='rgba(0,0,0,.06)';
+    for(let i=0;i<RW;i++)for(let j=0;j<RD;j++){const s=pt(i+.5,j+.5,0);
+      ctx.beginPath();ctx.ellipse(s[0],s[1],.28*U*.86,.28*U*.5,0,0,7);ctx.fill();}}
+  bricks.forEach(b=>{
+    const hex=vizColor(b.c), yT=b.y+b.h, isNew=curr.has(b.i);
+    const A=pt(b.x,b.z,yT),Bc=pt(b.x+b.w,b.z,yT),C=pt(b.x+b.w,b.z+b.d,yT),Dp=pt(b.x,b.z+b.d,yT);
+    const Bb=pt(b.x+b.w,b.z,b.y),Cb=pt(b.x+b.w,b.z+b.d,b.y),Db=pt(b.x,b.z+b.d,b.y);
+    ctx.strokeStyle=isNew?'#E6A800':'rgba(0,0,0,.35)';
+    ctx.lineWidth=Math.max(.6,U*0.05)*(isNew?2.4:1);
+    const boost=isNew?1.12:1;
+    ctx.fillStyle=shade(hex,.78*boost);
+    ctx.beginPath();ctx.moveTo(Bc[0],Bc[1]);ctx.lineTo(C[0],C[1]);ctx.lineTo(Cb[0],Cb[1]);ctx.lineTo(Bb[0],Bb[1]);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle=shade(hex,.6*boost);
+    ctx.beginPath();ctx.moveTo(Dp[0],Dp[1]);ctx.lineTo(C[0],C[1]);ctx.lineTo(Cb[0],Cb[1]);ctx.lineTo(Db[0],Db[1]);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle=shade(hex,1.04*boost);
+    ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(Bc[0],Bc[1]);ctx.lineTo(C[0],C[1]);ctx.lineTo(Dp[0],Dp[1]);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.lineWidth=Math.max(.6,U*0.05);
+    const rx=.31*U*.86*2*.5, ry=.31*U*.5;
+    if(U>5)for(let i=0;i<b.w;i++)for(let j=0;j<b.d;j++){
+      const s=pt(b.x+i+.5,b.z+j+.5,yT);
+      ctx.fillStyle=shade(hex,.85*boost);
+      ctx.beginPath();ctx.ellipse(s[0],s[1]+ry*.55,rx,ry,0,0,7);ctx.fill();
+      ctx.fillStyle=shade(hex,1.14*boost);
+      ctx.beginPath();ctx.ellipse(s[0],s[1],rx,ry,0,0,7);ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,.18)';ctx.stroke();
+    }
+  });
+  updateStepInfo(curr);
+}
+function updateStepInfo(curr){
+  const total=V.steps.length;
+  document.getElementById('vLayerN').textContent='שלב '+Math.min(V.step,total)+'/'+total;
+  const info=document.getElementById('vStepInfo');
+  if(V.step<=total&&curr.size){
+    const agg={};
+    curr.forEach(i=>{const v=V.vox[i];const key=v[3]+'×'+v[4]+(v[5]>1?'×'+v[5]:'')+' '+(BL_COLORS[v[6]]?BL_COLORS[v[6]][0]:'');agg[key]=(agg[key]||0)+1});
+    info.textContent='🧱 בשלב זה ('+curr.size+' לבנים): '+Object.entries(agg).map(([k,n])=>k+(n>1?' ×'+n:'')).join(' · ');
+  } else info.textContent='✔ הדגם הושלם — '+V.vox.length+' לבנים';
+}
+/* === VIEWER 3D — WebGL: לבנים אמיתיות עם סטאדים, תאורה וסיבוב חופשי === */
+const T={renderer:null,scene:null,camera:null,yaw:.85,pitch:.62,dist:0,center:null,objs:[]};
+function use3D(){return typeof THREE!=='undefined'}
+function active3D(){return use3D()&&T.renderer}
+function ensure3D(){
+  if(T.renderer)return true;
+  try{
+    const cv=document.getElementById('vCanvas3d');
+    T.renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true,preserveDrawingBuffer:true});
+    T.renderer.outputEncoding=THREE.sRGBEncoding;
+    T.renderer.toneMapping=THREE.ACESFilmicToneMapping; T.renderer.toneMappingExposure=1.12;
+    T.renderer.shadowMap.enabled=true; T.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    T.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,3));
+    T.scene=new THREE.Scene();
+    T.camera=new THREE.PerspectiveCamera(38,1,0.1,5000);
+    T.scene.add(new THREE.HemisphereLight(0xEAF4FF,0xB0A890,.55));
+    const d1=new THREE.DirectionalLight(0xFFF6E8,1.0); d1.position.set(1,1.7,.7);
+    d1.castShadow=true; d1.shadow.mapSize.set(2048,2048); d1.shadow.bias=-0.0008; T.sun=d1; T.scene.add(d1);
+    const d2=new THREE.DirectionalLight(0xcfe0ff,.3); d2.position.set(-1,.5,-.9); T.scene.add(d2);
+    return true;
+  }catch(e){console.error('3D init failed',e); T.renderer=null; return false}
+}
+function clear3D(){
+  T.objs.forEach(o=>{T.scene.remove(o); o.geometry&&o.geometry.dispose(); o.material&&o.material.dispose()});
+  T.objs=[];
+}
+let WEDGE_GEO=null;
+function wedgeGeo(){ // מנסרה משופעת: גבוה ב--x, יורד ל-+x (יחידה)
+  if(WEDGE_GEO)return WEDGE_GEO;
+  const p=[-0.5,-0.5,-0.5, -0.5,-0.5,0.5, 0.5,-0.5,0.5, 0.5,-0.5,-0.5, -0.5,0.5,-0.5, -0.5,0.5,0.5];
+  const pos=[];
+  [[0,2,1],[0,3,2],[0,1,4],[1,5,4],[3,4,5],[3,5,2],[0,4,3],[1,2,5]].forEach(f=>f.forEach(vi=>pos.push(p[vi*3],p[vi*3+1],p[vi*3+2])));
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.computeVertexNormals();
+  WEDGE_GEO=g; return g;
+}
+function build3D(){
+  clear3D();
+  const vox=V.vox; if(!vox||!vox.length)return;
+  let W=0,D=0,H=0; vox.forEach(v=>{W=Math.max(W,v[0]+v[3]);D=Math.max(D,v[1]+v[4]);H=Math.max(H,v[2]+v[5])});
+  const {upto,curr}=stepBrickSet();
+  const cats={box:[[],[]],wheel:[[],[]],slope:[[],[]],round:[[],[]]}; // [רגיל, זוהר]
+  vox.forEach((v,i)=>{
+    if(!upto.has(i))return;
+    const g=curr.has(i)?1:0, [X,Z,Y,Wd,Dd,Hh,C]=v, shape=v[7]||0, dir=v[8]||0;
+    if(shape===1)cats.wheel[g].push({cx:X+Wd/2-W/2,cz:Z+Dd/2-D/2,y:Y,dm:Wd,wd:Dd,c:C});
+    else if(shape===2)cats.slope[g].push({cx:X+Wd/2-W/2,cz:Z+Dd/2-D/2,cy:Y*1.2+Hh*.6,sx:Wd,sy:Hh*1.2,sz:Dd,c:C,dir});
+    else if(shape===3)cats.round[g].push({cx:X+Wd/2-W/2,cz:Z+Dd/2-D/2,cy:Y*1.2+Hh*.6,dm:Wd,hh:Hh*1.2,c:C});
+    else for(let l=0;l<Hh;l++) decomposeFootprint(Wd,Dd).forEach(b=>{
+      cats.box[g].push({cx:X+b.dx+b.cl/2-W/2,cz:Z+b.dz+b.sw/2-D/2,cy:(Y+l)*1.2+.6,sx:b.cl,sz:b.sw,c:C,gx:X+b.dx-W/2,gz:Z+b.dz-D/2,cl:b.cl,sw:b.sw,top:(Y+l+1)*1.2});
+    });
+  });
+  const mat=g=>{const mm=new THREE.MeshStandardMaterial({roughness:.32,metalness:.05});
+    if(g){mm.emissive=new THREE.Color(0x8a6a00);mm.emissiveIntensity=.55} return mm};
+  const m4=new THREE.Matrix4(),q0=new THREE.Quaternion(),col=new THREE.Color(),s3=new THREE.Vector3(),p3=new THREE.Vector3();
+  const qx=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),Math.PI/2);
+  const add=mesh=>{mesh.castShadow=true; mesh.receiveShadow=true; mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;T.scene.add(mesh);T.objs.push(mesh)};
+  [0,1].forEach(g=>{
+    /* קופסאות + סטאדים */
+    const items=cats.box[g];
+    if(items.length){
+      const boxes=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),mat(g),items.length);
+      let sn=0; items.forEach(it=>sn+=it.cl*it.sw);
+      const studs=new THREE.InstancedMesh(new THREE.CylinderGeometry(.3,.3,.22,14),mat(g),sn);
+      let si=0;
+      items.forEach((it,ix)=>{
+        col.set(vizColor(it.c));
+        m4.compose(p3.set(it.cx,it.cy,it.cz),q0,s3.set(it.sx*.985,1.2*.985,it.sz*.985));
+        boxes.setMatrixAt(ix,m4);boxes.setColorAt(ix,col);
+        for(let a2=0;a2<it.cl;a2++)for(let b2=0;b2<it.sw;b2++){
+          m4.compose(p3.set(it.gx+a2+.5,it.top+.11,it.gz+b2+.5),q0,s3.set(1,1,1));
+          studs.setMatrixAt(si,m4);studs.setColorAt(si,col);si++;
+        }
+      });
+      add(boxes); add(studs);
+    }
+    /* גלגלים */
+    const wh=cats.wheel[g];
+    if(wh.length){
+      const ms=new THREE.InstancedMesh(new THREE.CylinderGeometry(.5,.5,1,22),mat(g),wh.length);
+      const hub=new THREE.InstancedMesh(new THREE.CylinderGeometry(.5,.5,1,14),mat(g),wh.length);
+      wh.forEach((it,ix)=>{
+        col.set(vizColor(it.c));
+        m4.compose(p3.set(it.cx,it.y*1.2+it.dm/2,it.cz),qx,s3.set(it.dm,it.wd*1.06,it.dm));
+        ms.setMatrixAt(ix,m4); ms.setColorAt(ix,col);
+        m4.compose(p3.set(it.cx,it.y*1.2+it.dm/2,it.cz),qx,s3.set(it.dm*.55,it.wd*1.12,it.dm*.55));
+        hub.setMatrixAt(ix,m4); hub.setColorAt(ix,new THREE.Color('#A0A5A9'));
+      });
+      add(ms); add(hub);
+    }
+    /* שיפועים */
+    const sl=cats.slope[g];
+    if(sl.length){
+      const smat=mat(g); smat.side=THREE.DoubleSide;
+      const ms=new THREE.InstancedMesh(wedgeGeo(),smat,sl.length);
+      sl.forEach((it,ix)=>{
+        col.set(vizColor(it.c));
+        const ang={0:0,1:Math.PI,2:-Math.PI/2,3:Math.PI/2}[it.dir]||0;
+        const qy=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),ang);
+        const sx=(it.dir<2)?it.sx:it.sz, sz=(it.dir<2)?it.sz:it.sx;
+        m4.compose(p3.set(it.cx,it.cy,it.cz),qy,s3.set(sx*.985,it.sy*.985,sz*.985));
+        ms.setMatrixAt(ix,m4); ms.setColorAt(ix,col);
+      });
+      add(ms);
+    }
+    /* עמודים עגולים */
+    const rd=cats.round[g];
+    if(rd.length){
+      const ms=new THREE.InstancedMesh(new THREE.CylinderGeometry(.5,.5,1,18),mat(g),rd.length);
+      rd.forEach((it,ix)=>{
+        col.set(vizColor(it.c));
+        m4.compose(p3.set(it.cx,it.cy,it.cz),q0,s3.set(it.dm,it.hh,it.dm));
+        ms.setMatrixAt(ix,m4); ms.setColorAt(ix,col);
+      });
+      add(ms);
+    }
+  });
+  /* baseplate ירוק עם סטאדים */
+  const bp=new THREE.Mesh(new THREE.BoxGeometry(W+8,.34,D+8),new THREE.MeshStandardMaterial({color:0xA8C79E,roughness:.85}));
+  bp.position.set(0,-.17,0); bp.receiveShadow=true; T.scene.add(bp); T.objs.push(bp);
+  const bs=new THREE.InstancedMesh(new THREE.CylinderGeometry(.3,.3,.16,10),new THREE.MeshStandardMaterial({color:0x9DBE93,roughness:.85}),(W+6)*(D+6));
+  const m4b=new THREE.Matrix4(),qb=new THREE.Quaternion(),sb=new THREE.Vector3(1,1,1),pb=new THREE.Vector3();
+  let bi=0;
+  for(let i=0;i<W+6;i++)for(let j=0;j<D+6;j++){m4b.compose(pb.set(i-(W+6)/2+.5,.08,j-(D+6)/2+.5),qb,sb);bs.setMatrixAt(bi++,m4b)}
+  bs.instanceMatrix.needsUpdate=true; T.scene.add(bs); T.objs.push(bs);
+  /* צל מגע רך */
+  const scv=document.createElement('canvas'); scv.width=scv.height=128;
+  const sc=scv.getContext('2d');
+  const gr=sc.createRadialGradient(64,64,8,64,64,64);
+  gr.addColorStop(0,'rgba(0,0,0,.38)'); gr.addColorStop(1,'rgba(0,0,0,0)');
+  sc.fillStyle=gr; sc.fillRect(0,0,128,128);
+  const stex=new THREE.CanvasTexture(scv);
+  const shadow=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:stex,transparent:true,depthWrite:false}));
+  shadow.rotation.x=-Math.PI/2; shadow.position.set(0,.03,0); shadow.scale.set(W*1.25,D*1.25,1);
+  T.scene.add(shadow); T.objs.push(shadow);
+  const R=Math.max(W,D,H*1.2);
+  if(T.sun){const sc=T.sun.shadow.camera; T.sun.position.set(R,R*1.7,R*.7);
+    sc.left=-R*1.4; sc.right=R*1.4; sc.top=R*1.6; sc.bottom=-R*.5; sc.far=R*6; sc.updateProjectionMatrix()}
+  if(!T.dist)T.dist=R*2.3+8;
+  T.maxDist=R*5+20; T.minDist=Math.max(4,R*.6);
+  T.center=new THREE.Vector3(0,H*.55,0);
+}
+function draw3D(){
+  if(!T.renderer)return;
+  const cv=document.getElementById('vCanvas3d');
+  const cw=cv.clientWidth||600, chh=340;
+  T.renderer.setSize(cw,chh,false);
+  T.camera.aspect=cw/chh; T.camera.updateProjectionMatrix();
+  T.pitch=Math.max(.15,Math.min(1.35,T.pitch));
+  T.camera.position.set(
+    T.center.x+T.dist*Math.cos(T.pitch)*Math.sin(T.yaw),
+    T.center.y+T.dist*Math.sin(T.pitch),
+    T.center.z+T.dist*Math.cos(T.pitch)*Math.cos(T.yaw));
+  T.camera.lookAt(T.center);
+  T.renderer.render(T.scene,T.camera);
+}
+function render3D(){
+  if(!ensure3D()){renderVox2D();return}
+  build3D(); draw3D();
+  updateStepInfo(stepBrickSet().curr);
+}
+/* בקרות 3D: גרירה חופשית + גלגלת */
+(()=>{
+  const cv=document.getElementById('vCanvas3d'); let last=null;
+  cv.addEventListener('pointerdown',e=>{last=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId)});
+  cv.addEventListener('pointermove',e=>{
+    if(!last)return;
+    T.yaw-=(e.clientX-last[0])*.011; T.pitch+=(e.clientY-last[1])*.008;
+    last=[e.clientX,e.clientY]; draw3D();
+  });
+  cv.addEventListener('pointerup',()=>last=null);
+  cv.addEventListener('wheel',e=>{e.preventDefault();T.dist=Math.max(T.minDist||4,Math.min(T.maxDist||500,T.dist*(e.deltaY>0?1.12:.9)));draw3D()},{passive:false});
+})();
+
+/* === BOX ART — אריזת לגו שיווקית מהדגם === */
+function roundRect(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
+function makeBoxArt(){
+  const p=cur(); if(!p||!p.plan){toast('קודם צור תוכנית');return}
+  const pl=p.plan;
+  /* צילום הדגם מהקנבס הפעיל */
+  const srcCv=use3D()&&T.renderer?document.getElementById('vCanvas3d'):document.getElementById('vCanvas');
+  if(use3D()&&T.renderer){T.renderer.setPixelRatio(3);draw3D();} else renderVox2D();
+  const shot=new Image();
+  shot.onload=()=>{
+    const W=1200,H=900, cv=document.createElement('canvas'); cv.width=W*2; cv.height=H*2; // 4K
+    const c=cv.getContext('2d'); c.scale(2,2);
+    /* רקע סצנה */
+    const bg=c.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,'#0E3E74'); bg.addColorStop(.65,'#2A79C8'); bg.addColorStop(1,'#79B6E8');
+    c.fillStyle=bg; c.fillRect(0,0,W,H);
+    /* קרני זוהר */
+    c.save(); c.translate(W/2,H*.52); c.globalAlpha=.07; c.fillStyle='#FFFFFF';
+    for(let i=0;i<12;i++){c.rotate(Math.PI/6); c.beginPath(); c.moveTo(0,0); c.lineTo(-70,-900); c.lineTo(70,-900); c.fill()}
+    c.restore();
+    /* זוהר רצפה */
+    const fg=c.createRadialGradient(W/2,H*.68,50,W/2,H*.68,420);
+    fg.addColorStop(0,'rgba(255,255,255,.30)'); fg.addColorStop(1,'rgba(255,255,255,0)');
+    c.fillStyle=fg; c.beginPath(); c.ellipse(W/2,H*.68,430,120,0,0,7); c.fill();
+    /* הדגם */
+    const iw=Math.min(760,shot.width*(520/shot.height)), ih=iw*(shot.height/shot.width);
+    c.drawImage(shot,(W-iw)/2,H*.66-ih+40,iw,ih);
+    /* מסגרת קופסה צהובה */
+    c.strokeStyle='#F7D117'; c.lineWidth=16; c.strokeRect(8,8,W-16,H-16);
+    /* לוגו לבנה */
+    c.fillStyle='#F7D117'; roundRect(c,40,40,240,120,14); c.fill();
+    c.fillStyle='#D9B400'; for(let i=0;i<3;i++){roundRect(c,66+i*66,28,44,20,7); c.fill()}
+    c.fillStyle='#F7D117'; for(let i=0;i<3;i++){roundRect(c,66+i*66,24,44,18,7); c.fill()}
+    c.fillStyle='#1B1B1B'; c.font='900 42px Heebo,Arial'; c.textAlign='center';
+    c.fillText('LEGO',160,92); c.fillText('PLANNER',160,138);
+    /* שם הסט */
+    c.textAlign='right'; c.direction='rtl';
+    c.font='900 58px Heebo,Arial'; c.lineWidth=8; c.strokeStyle='rgba(0,0,0,.55)'; c.fillStyle='#FFFFFF';
+    const nm=(pl.name||'').slice(0,40);
+    c.strokeText(nm,W-56,110); c.fillText(nm,W-56,110);
+    c.font='700 30px Heebo,Arial'; c.fillStyle='#FFE9A8';
+    c.fillText((THEME_HE[pl.theme]||pl.theme)+' · Master Builder Studio',W-56,156);
+    /* פס תחתון שחור */
+    c.fillStyle='#111'; c.fillRect(24,H-130,W-48,106);
+    /* תג גיל */
+    c.fillStyle='#FFF'; roundRect(c,52,H-116,120,78,10); c.fill();
+    c.fillStyle='#111'; c.font='900 44px Heebo,Arial'; c.textAlign='center';
+    c.fillText(pl.ageRange||'8+',112,H-62);
+    /* מספר חלקים */
+    const pieces=(p.bom&&p.bom.length)?p.bom.reduce((s,b)=>s+(+b.qty||0),0):pl.totalPieces;
+    c.fillStyle='#D01012'; roundRect(c,196,H-116,250,78,10); c.fill();
+    c.fillStyle='#FFF'; c.font='900 40px Heebo,Arial';
+    c.fillText(pieces+' חלקים',321,H-64);
+    /* קושי בלבנים */
+    c.textAlign='right'; c.font='700 28px Heebo,Arial'; c.fillStyle='#FFF';
+    c.fillText('רמת בנייה',W-60,H-80);
+    for(let i=0;i<5;i++){c.fillStyle=i<pl.difficulty?'#F7D117':'#444'; roundRect(c,W-60-32-(i*38),H-66,30,20,4); c.fill()}
+    /* חותמת בילד */
+    c.fillStyle='#666'; c.font='400 18px Heebo,Arial'; c.textAlign='left'; c.direction='ltr';
+    c.fillText(APP_BUILD,52,H-16);
+    /* פלט */
+    const url=cv.toDataURL('image/png');
+    const img=document.getElementById('boxArtImg'); img.src=url; img.style.display='block';
+    const a=document.createElement('a'); a.href=url; a.download=projName()+'_box.png'; a.click();
+    toast('אריזת הלגו נוצרה וירדה 🎁');
+    img.scrollIntoView({behavior:'smooth',block:'center'});
+    if(use3D()&&T.renderer){T.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,3));draw3D();}
+  };
+  shot.src=srcCv.toDataURL('image/png');
+}
+document.getElementById('boxArt').onclick=makeBoxArt;
+
+/* דיספצ'ר: 3D כשאפשר, 2D כגיבוי */
+function renderVox(){
+  const three=use3D();
+  document.getElementById('vCanvas').style.display=three?'none':'block';
+  document.getElementById('vCanvas3d').style.display=three?'block':'none';
+  if(three)render3D(); else renderVox2D();
+}
+
+function initViewer(){
+  const p=cur(); const has=p&&p.plan&&Array.isArray(p.plan.voxels)&&p.plan.voxels.length;
+  document.getElementById('vEmpty').style.display=has?'none':'block';
+  document.getElementById('vwrap').style.display=has?'block':'none';
+  if(!has)return;
+  V.vox=p.plan.voxels; buildSteps();
+  const sl=document.getElementById('vLayer'); sl.max=V.steps.length; sl.value=V.steps.length; V.step=V.steps.length;
+  stopPlay();
+  requestAnimationFrame(renderVox);
+}
+function setStep(n){V.step=Math.max(1,Math.min(V.steps.length,n)); document.getElementById('vLayer').value=V.step; renderVox()}
+function stopPlay(){if(V.playing){clearInterval(V.playing);V.playing=null;document.getElementById('vPlay').textContent='▶️'}}
+document.getElementById('vPlay').onclick=()=>{
+  if(V.playing){stopPlay();return}
+  if(V.step>=V.steps.length)setStep(1);
+  document.getElementById('vPlay').textContent='⏸';
+  V.playing=setInterval(()=>{
+    if(V.step>=V.steps.length){stopPlay();return}
+    setStep(V.step+1);
+  },1100);
+};
+document.getElementById('vNext').onclick=()=>{stopPlay();setStep(V.step+1)};
+document.getElementById('vPrev').onclick=()=>{stopPlay();setStep(V.step-1)};
+async function genPreview(silent){
+  const p=cur(); if(!p||!p.plan){toast('קודם צור תוכנית');return}
+  const btns=[document.getElementById('genPrev'),document.getElementById('vRegen')];
+  btns.forEach(b=>b&&(b.disabled=true));
+  if(!silent)toast('מייצר תצוגת דגם...');
+  try{
+    let vox=[];
+    try{ /* מסלול 1: AI-אדריכל — הרכבה מרכיבי מוצר */
+      const dA=await callClaude([{type:'text',text:buildPromptArch(p.plan,p.input&&p.input.desc)}]);
+      if(dA.error)throw new Error(dA.error.message);
+      const txtA=(dA.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('\n');
+      vox=compileAssembly(extractJSON(txtA,true));
+      if(vox.length<6)throw new Error('הרכבה דלה');
+    }catch(eArch){ /* מסלול 2: פריסת ווקסלים חופשית */
+      const d=await callClaude([{type:'text',text:buildPromptC(p.plan,p.input&&p.input.desc)}]);
+      if(d.error)throw new Error(d.error.message);
+      const txt=(d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('\n');
+      vox=extractJSON(txt,true).filter(v=>Array.isArray(v)&&v.length>=7&&v[3]>0&&v[4]>0&&v[5]>0);
+    }
+    if(!vox.length)throw new Error('תצוגה ריקה');
+    if(!p.plan.voxelsProduct)p.plan.voxelsProduct=p.plan.voxels;
+    p.plan.voxels=vox; p.plan.voxelSrc='ai'; saveState(); initViewer();
+    if(!silent)toast('תצוגת הדגם מוכנה 🎨');
+  }catch(e){console.error(e); if(!silent)toast('⚠ יצירת התצוגה נכשלה: '+e.message)}
+  finally{btns.forEach(b=>b&&(b.disabled=false))}
+}
+document.getElementById('genPrev').onclick=()=>genPreview(false);
+document.getElementById('vRegen').onclick=()=>{
+  const p=cur();
+  if(p&&p.plan&&p.plan.voxelSrc==='ai'&&p.plan.voxelsProduct){
+    p.plan.voxels=p.plan.voxelsProduct; p.plan.voxelSrc='product';
+    saveState(); initViewer(); toast('חזרה לתצוגת המוצר 🏭'); return;
+  }
+  genPreview(false);
+};
+document.getElementById('dlLdr').onclick=()=>{
+  const r=makeLDR();
+  if(!r)return toast('אין תצוגת דגם עדיין');
+  dl(projName()+'.ldr',r.text,'text/plain');
+  toast('קובץ Studio ירד ('+r.bricks+' לבנים) — פתח ב-BrickLink Studio 📐');
+};
+document.getElementById('vRot').onclick=()=>{if(active3D()){T.yaw+=Math.PI/2;draw3D()}else{V.rot=(V.rot+1)%4;renderVox()}};
+document.getElementById('vZin').onclick=()=>{if(active3D()){T.dist=Math.max(T.minDist||4,T.dist*.85);draw3D()}else{V.zoom=Math.min(2.5,V.zoom*1.2);renderVox()}};
+document.getElementById('vZout').onclick=()=>{if(active3D()){T.dist=Math.min(T.maxDist||500,T.dist*1.18);draw3D()}else{V.zoom=Math.max(.4,V.zoom/1.2);renderVox()}};
+document.getElementById('vLayer').oninput=e=>{stopPlay();setStep(+e.target.value)};
+(()=>{ /* גרירה לסיבוב */
+  const cv=document.getElementById('vCanvas'); let sx=null;
+  cv.addEventListener('pointerdown',e=>{sx=e.clientX;cv.setPointerCapture(e.pointerId)});
+  cv.addEventListener('pointermove',e=>{
+    if(sx===null)return;
+    if(Math.abs(e.clientX-sx)>55){V.rot=(V.rot+(e.clientX<sx?1:3))%4;sx=e.clientX;renderVox()}
+  });
+  cv.addEventListener('pointerup',()=>sx=null);
+})();
+window.addEventListener('resize',()=>renderVox());
+
+/* === API KEY (standalone mode) === */
+const API_KEY_STORE='lego_mb_apikey';
+function getKey(){try{return localStorage.getItem(API_KEY_STORE)||''}catch(e){return ''}}
+function apiHeaders(){
+  const h={'Content-Type':'application/json'};
+  const k=getKey();
+  if(k){ // מצב עצמאי — מחוץ ל-Claude
+    h['x-api-key']=k;
+    h['anthropic-version']='2023-06-01';
+    h['anthropic-dangerous-direct-browser-access']='true';
+  }
+  return h;
+}
+const MODELS=['claude-sonnet-4-6','claude-haiku-4-5-20251001','claude-opus-4-8'];
+/* XHR עוקף את מיירט ה-fetch של תצוגות מוטמעות (מובייל) — בשימוש כשיש מפתח */
+function xhrPost(url,headers,body){
+  return new Promise((resolve,reject)=>{
+    const x=new XMLHttpRequest();
+    x.open('POST',url); x.timeout=90000;
+    Object.entries(headers).forEach(([k,v])=>x.setRequestHeader(k,v));
+    x.onload=()=>resolve({ok:x.status>=200&&x.status<300,status:x.status,
+      json:async()=>JSON.parse(x.responseText)});
+    x.onerror=()=>reject(new Error('XHR network'));
+    x.ontimeout=()=>reject(new Error('XHR timeout'));
+    x.send(body);
+  });
+}
+async function sendReq(model,content,noKey){
+  const maxTok=(!noKey&&getKey())?4000:1000; // מפתח אישי = בלי מגבלת הגשר
+  const body=JSON.stringify({model,max_tokens:maxTok,messages:[{role:'user',content}]});
+  const url='https://api.anthropic.com/v1/messages';
+  const headers=noKey?{'Content-Type':'application/json'}:apiHeaders();
+  if(!noKey&&getKey()){
+    try{return await xhrPost(url,headers,body)}catch(e){/* נפילה ל-fetch */}
+  }
+  return await fetch(url,{method:'POST',headers,body});
+}
+async function callClaude(content){
+  let data, lastErr='';
+  for(let attempt=1; attempt<=4; attempt++){
+    const model=MODELS[Math.min(attempt-1,MODELS.length-1)]; // כל ניסיון — מודל אחר
+    try{
+      let res=await sendReq(model,content);
+      let readJson=async r=>{try{return await r.json()}catch(e){return{error:{type:'api_error',message:'תגובה לא תקינה (HTTP '+r.status+')'}}}};
+      data=await readJson(res);
+      if(!res.ok && !data.error) data={error:{type:'api_error',message:'HTTP '+res.status}};
+      let et=data.error?(data.error.type||'')+' '+(data.error.message||''):'';
+      /* העטיפה של Claude דוחה מפתח? ננסה דרך הגשר הפנימי בלי מפתח */
+      if(data.error && /auth|key|401|403/i.test(et) && getKey()){
+        try{
+          res=await sendReq(model,content,true);
+          const d2=await readJson(res);
+          if(!d2.error) return d2;
+          et=(d2.error.type||'')+' '+(d2.error.message||''); data=d2;
+        }catch(e2){}
+      }
+      if(data.error && /internal|server|overloaded|529|500|502|503|timeout|not_found|invalid_request.*model/i.test(et) && attempt<4){
+        lastErr=model+': '+et;
+        const nm=MODELS[Math.min(attempt,MODELS.length-1)];
+        document.getElementById('loaderTxt').textContent='מנסה מסלול חלופי ('+(attempt+1)+'/4: '+nm+')...';
+        await new Promise(r=>setTimeout(r,1500));
+        continue;
+      }
+      if(data.error && /auth|key|401|403/i.test(et) && !getKey()){
+        openSettings();
+        throw new Error('נדרש מפתח API לשימוש מחוץ ל-Claude — הזן אותו בהגדרות ⚙️');
+      }
+      return data;
+    }catch(e){
+      if(e.message&&e.message.includes('מפתח')) throw e;
+      lastErr=e.message||'network/CORS';
+      if(attempt<4){await new Promise(r=>setTimeout(r,1500)); continue}
+    }
+  }
+  return {error:{message:'כל המסלולים נכשלו ['+lastErr+']. תצוגת המובייל חוסמת את הרשת — פתח את הקובץ ב-claude.ai במחשב (עובד בלי מפתח), או בדפדפן רגיל (Chrome/Safari) עם המפתח'}};
+}
+/* settings UI */
+const IN_PREVIEW=/claude|anthropic|usercontent/i.test(location.hostname)||location.protocol==='blob:';
+const modalBg=document.getElementById('modalBg');
+function openSettings(){document.getElementById('apiKey').value=getKey(); refreshKeyStatus(); modalBg.classList.add('on')}
+function closeSettings(){modalBg.classList.remove('on')}
+function refreshKeyStatus(msg,cls){
+  const el=document.getElementById('keyStatus');
+  if(msg){el.textContent=msg; el.className='key-status '+cls; return}
+  const k=getKey();
+  const env=IN_PREVIEW?'תצוגת Claude (הרשת מנותבת דרך Claude)':'דפדפן עצמאי — '+(location.protocol==='file:'?'קובץ מקומי':location.hostname||'מקומי');
+  if(k&&IN_PREVIEW){
+    el.textContent='⚠ יש מפתח, אבל אתה בתוך תצוגת Claude שמיירטת את הרשת. הורד את הקובץ ופתח אותו ישירות בדפדפן (לחיצה כפולה) — שם המפתח עובד. סביבה: '+env;
+    el.className='key-status bad'; return;
+  }
+  el.textContent=(k?'מצב: מפתח שמור ✔ — מוכן לעבודה עצמאית':'מצב: ללא מפתח — נשען על הגשר של Claude')+' · סביבה: '+env;
+  el.className='key-status '+(k?'ok':'no');
+}
+document.getElementById('setBtn').onclick=openSettings;
+document.getElementById('modalClose').onclick=closeSettings;
+modalBg.onclick=e=>{if(e.target===modalBg)closeSettings()};
+document.getElementById('keyEye').onclick=()=>{const i=document.getElementById('apiKey'); i.type=i.type==='password'?'text':'password'};
+document.getElementById('keySave').onclick=()=>{
+  const k=document.getElementById('apiKey').value.trim();
+  if(!k)return refreshKeyStatus('הזן מפתח לפני שמירה','bad');
+  if(!k.startsWith('sk-ant-'))return refreshKeyStatus('מפתח לא תקין — צריך להתחיל ב-sk-ant-','bad');
+  try{localStorage.setItem(API_KEY_STORE,k)}catch(e){}
+  refreshKeyStatus('המפתח נשמר בדפדפן ✔','ok'); toast('מפתח API נשמר 🔑');
+};
+document.getElementById('keyDel').onclick=()=>{
+  try{localStorage.removeItem(API_KEY_STORE)}catch(e){}
+  document.getElementById('apiKey').value=''; refreshKeyStatus(); toast('המפתח נמחק');
+};
+document.getElementById('keyTest').onclick=async()=>{
+  refreshKeyStatus('בודק חיבור...','no');
+  try{
+    const d=await callClaude([{type:'text',text:'Reply with exactly: OK'}]);
+    if(d.error) throw new Error(d.error.message);
+    refreshKeyStatus('החיבור עובד! ✔ אפשר לתכנן','ok');
+  }catch(e){refreshKeyStatus('החיבור נכשל: '+e.message,'bad')}
+};
+
+/* === OFFLINE EXPERT ENGINE — עובד תמיד, בלי רשת/חשבון/מפתח === */
+const HEB_COLORS={'אדום':5,'red':5,'שחור':11,'black':11,'לבן':1,'white':1,'כחול':7,'blue':7,'צהוב':3,'yellow':3,'ירוק':6,'green':6,'כתום':4,'orange':4,'אפור':86,'gray':86,'grey':86,'חום':88,'brown':88,'ורוד':23,'pink':23,'סגול':24,'purple':24,'תכלת':105,'טורקיז':40,'בז':2,'tan':2,'ליים':34};
+function parseColors(s){
+  const found=[]; s=(s||'').toLowerCase();
+  Object.entries(HEB_COLORS).forEach(([w,id])=>{const i=s.indexOf(w); if(i>-1&&!found.some(f=>f.id===id))found.push({id,i})});
+  return found.sort((a,b)=>a.i-b.i).map(f=>f.id);
+}
+const TYPE_KEYS={
+  formula:['פורמולה','formula','f1','f-1','גרנד פרי','פרארי','ferrari','אינדי','indycar','מרוץ פורמולה'],
+  crane:['מנוף','עגורן','crane','מנוף נייד'],
+  excavator:['מחפר','מחפרון','באגר','דחפור','excavator','bulldozer','digger'],
+  helicopter:['מסוק','הליקופטר','helicopter','chopper'],
+  train:['רכבת','קטר','train','locomotive'],
+  motorcycle:['אופנוע','קטנוע','motorcycle','harley','moto'],
+  pirate:['פיראט','פיראטים','ספינת מפרש','מפרשית','pirate','galleon'],
+  dino:['דינוזאור','טירנוזאור','רקס','t-rex','trex','דינו','dino'],
+  truck:['משאית','סמיטריילר','truck','גרר'],
+  figure:['יודה','גרוגו','yoda','grogu','דמות','פיגורה','בובה','figure','character','גיבור'],
+  house:['בית','בניין','וילה','קפה','חנות','מסעדה','house','building','cafe','shop','מוסך'],
+  car:['מכונית','רכב','אוטו','טנדר','אמבולנס','car','van','מונית'],
+  technic:['טכניק','technic','ג'+String.fromCharCode(39)+'יפ','jeep','באגי','buggy','טרקטור','supercar','4x4','שטח'],
+  castle:['טירה','מבצר','אביר','castle','knight','חומה'],
+  space:['חללית','חלל','רקטה','טיל','spaceship','rocket','space'],
+  animal:['חיה','כלב','חתול','דרקון','סוס','ציפור','dragon','dog','cat','פיל'],
+  robot:['רובוט','robot','mech'],
+  boat:['סירה','סירת','ספינה','ספינת','יאכטה','boat','ship'],
+  plane:['מטוס','plane','jet'],
+  tower:['מגדל','tower','גורד']
+};
+function schemeFor(type,style){
+  const S={car:{classic:{m:5,s:11,a:3,n:85},sport:{m:5,s:11,a:1,n:85},fut:{m:1,s:11,a:40,n:85}},
+    technic:{classic:{m:4,s:11,a:3,n:85},sport:{m:4,s:11,a:3,n:85},fut:{m:85,s:11,a:40,n:86}},
+    house:{m:1,s:2,a:59,n:86}, castle:{m:86,s:85,a:59,n:2}, space:{m:1,s:86,a:17,n:11},
+    plane:{m:1,s:5,a:11,n:86}, boat:{m:1,s:63,a:5,n:2}, animal:{m:150,s:2,a:11,n:88},
+    robot:{m:86,s:11,a:17,n:85}, figure:{m:156,s:2,a:69,n:150}, tower:{m:5,s:3,a:7,n:1},
+    formula:{m:5,s:11,a:1,n:85}, motorcycle:{m:5,s:11,a:86,n:85}, pirate:{m:88,s:2,a:11,n:1}, dino:{m:6,s:288,a:2,n:11}, crane:{m:3,s:11,a:5,n:85}, excavator:{m:3,s:11,a:4,n:85}, helicopter:{m:5,s:1,a:11,n:85},
+    truck:{m:5,s:85,a:1,n:11}, train:{m:6,s:11,a:5,n:85}};
+  const v=S[type]; if(!v)return{m:5,s:3,a:7,n:85};
+  return v.classic?{...(v[style]||v.classic)}:{...v};
+}
+function detectStyle(desc){
+  const d=(desc||'').toLowerCase();
+  if(/עתידני|עתיד|futur|concept|סייבר|cyber|קונספט|2050|חלל/.test(d))return 'fut';
+  if(/ספורט|מרוץ|מירוץ|race|super|סופר|gt|פרארי|למבו/.test(d))return 'sport';
+  return 'classic';
+}
+function detectType(desc,theme){
+  if(theme==='technic')return 'technic';
+  if(theme==='castle')return 'castle';
+  if(theme==='star-wars')return 'space';
+  const d=(desc||'').toLowerCase();
+  for(const[t,keys]of Object.entries(TYPE_KEYS))if(keys.some(k=>d.includes(k)))return t;
+  if(theme==='city')return 'house';
+  return 'tower';
+}
+const SIZE_PIECES={mini:80,small:200,medium:480,large:1000,xl:1800,auto:0};
+const RECIPES={ // p=מק"ט, share=נתח מהחלקים, c=תפקיד צבע: m=ראשי s=משני a=מבטא n=ניטרלי t=שקוף
+  house:[['3001','Brick 2x4','Bricks',.14,'m'],['3010','Brick 1x4','Bricks',.12,'m'],['3004','Brick 1x2','Bricks',.10,'m'],['3003','Brick 2x2','Bricks',.06,'s'],['3020','Plate 2x4','Plates',.09,'n'],['3031','Plate 4x4','Plates',.05,'n'],['3023','Plate 1x2','Plates',.06,'s'],['3040','Slope 45 2x1','Slopes',.10,'a'],['3039','Slope 45 2x2','Slopes',.06,'a'],['3068b','Tile 2x2','Tiles',.05,'n'],['2431','Tile 1x4','Tiles',.04,'s'],['60592','Window 1x2x2','Special',.04,'t'],['3794','Jumper Plate 1x2','SNOT',.04,'s'],['87087','Brick 1x1 Stud Side','SNOT',.03,'m'],['3062b','Round Brick 1x1','Special',.02,'a']],
+  car:[['3020','Plate 2x4','Plates',.12,'n'],['3021','Plate 2x3','Plates',.08,'m'],['3004','Brick 1x2','Bricks',.12,'m'],['3003','Brick 2x2','Bricks',.08,'m'],['3023','Plate 1x2','Plates',.08,'s'],['3040','Slope 45 2x1','Slopes',.09,'m'],['85984','Slope 30 1x2','Slopes',.07,'m'],['3069b','Tile 1x2','Tiles',.07,'n'],['2926','Plate 1x4 w/ Wheel Holders','Wheels',.04,'n'],['6014','Wheel w/ Tire','Wheels',.06,'n'],['3788','Mudguard 2x4','Special',.05,'m'],['3822','Door','Special',.02,'m'],['4070','Headlight Brick','SNOT',.05,'a'],['98138','Round Tile 1x1','Tiles',.04,'t'],['3062b','Round Brick 1x1','Special',.03,'a']],
+  technic:[['32524','Technic Beam 7','Technic',.10,'m'],['32316','Technic Beam 5','Technic',.09,'m'],['40490','Technic Beam 9','Technic',.06,'m'],['32525','Technic Beam 11','Technic',.05,'s'],['2780','Pin w/ Friction','Technic',.18,'n'],['6558','Pin Long Friction','Technic',.07,'n'],['3713','Bush','Technic',.05,'n'],['3705','Axle 4','Technic',.06,'n'],['3707','Axle 8','Technic',.04,'n'],['10928','Gear 8T','Gears',.03,'n'],['3648','Gear 24T','Gears',.03,'n'],['32270','Gear 12T Bevel','Gears',.03,'n'],['32531','Technic Frame 5x7','Technic',.04,'s'],['56145','Wheel 30.4mm','Wheels',.05,'n'],['44309','Tire','Wheels',.05,'n'],['32013','Angle Element #1','Technic',.04,'s'],['6536','Axle Joiner Perp.','Technic',.03,'n']],
+  castle:[['3001','Brick 2x4','Bricks',.16,'n'],['3004','Brick 1x2','Bricks',.14,'n'],['3005','Brick 1x1','Bricks',.10,'n'],['3010','Brick 1x4','Bricks',.10,'n'],['3020','Plate 2x4','Plates',.08,'n'],['3660','Slope Inv 45 2x2','Slopes',.05,'n'],['3040','Slope 45 2x1','Slopes',.07,'a'],['4589','Cone 1x1','Special',.04,'a'],['3062b','Round Brick 1x1','Special',.05,'n'],['3068b','Tile 2x2','Tiles',.06,'n'],['60592','Window 1x2x2','Special',.03,'t'],['3941','Round Brick 2x2','Special',.05,'n'],['87087','Brick 1x1 Stud Side','SNOT',.04,'n'],['3626c','Minifig Head','Minifig',.015,'a'],['973','Minifig Torso','Minifig',.015,'a']],
+  space:[['3020','Plate 2x4','Plates',.12,'m'],['3034','Plate 2x8','Plates',.08,'m'],['3040','Slope 45 2x1','Slopes',.10,'m'],['85984','Slope 30 1x2','Slopes',.08,'s'],['3069b','Tile 1x2','Tiles',.08,'n'],['54200','Cheese Slope 1x1','Slopes',.10,'a'],['4070','Headlight Brick','SNOT',.06,'n'],['99780','Bracket 1x2-1x2','SNOT',.05,'n'],['98138','Round Tile 1x1','Tiles',.07,'t'],['3062b','Round Brick 1x1','Special',.05,'a'],['4589','Cone 1x1','Special',.05,'a'],['3023','Plate 1x2','Plates',.08,'s'],['3937','Hinge Base','Special',.04,'n'],['3004','Brick 1x2','Bricks',.04,'m']],
+  animal:[['3001','Brick 2x4','Bricks',.12,'m'],['3003','Brick 2x2','Bricks',.12,'m'],['3004','Brick 1x2','Bricks',.12,'m'],['3005','Brick 1x1','Bricks',.08,'s'],['3040','Slope 45 2x1','Slopes',.10,'m'],['3660','Slope Inv 2x2','Slopes',.06,'m'],['54200','Cheese Slope','Slopes',.08,'s'],['3022','Plate 2x2','Plates',.08,'m'],['3023','Plate 1x2','Plates',.07,'s'],['3062b','Round Brick 1x1','Special',.05,'a'],['98138','Round Tile 1x1 (עין)','Tiles',.03,'n'],['3794','Jumper 1x2','SNOT',.05,'m'],['87087','Brick Stud Side','SNOT',.04,'m']],
+  figure:[['3003','Brick 2x2','Bricks',.14,'s'],['3004','Brick 1x2','Bricks',.14,'s'],['3005','Brick 1x1','Bricks',.10,'a'],['3001','Brick 2x4','Bricks',.08,'n'],['3040','Slope 45 2x1','Slopes',.10,'m'],['54200','Cheese Slope','Slopes',.08,'s'],['3660','Slope Inv 2x2','Slopes',.05,'m'],['3022','Plate 2x2','Plates',.08,'s'],['3023','Plate 1x2','Plates',.07,'a'],['98138','Round Tile 1x1 (עין)','Tiles',.03,'t'],['3794','Jumper 1x2','SNOT',.06,'s'],['87087','Stud Side','SNOT',.05,'m'],['3062b','Round 1x1','Special',.02,'m']],
+  robot:[['3003','Brick 2x2','Bricks',.12,'m'],['3004','Brick 1x2','Bricks',.12,'m'],['3001','Brick 2x4','Bricks',.08,'m'],['3022','Plate 2x2','Plates',.10,'n'],['3023','Plate 1x2','Plates',.08,'s'],['99780','Bracket','SNOT',.07,'n'],['4070','Headlight','SNOT',.07,'n'],['3062b','Round Brick 1x1','Special',.06,'n'],['3069b','Tile 1x2','Tiles',.07,'s'],['98138','Round Tile 1x1','Tiles',.05,'t'],['3040','Slope 2x1','Slopes',.06,'m'],['3937','Hinge','Special',.05,'n'],['4085d','Clip Plate','SNOT',.07,'n']],
+  boat:[['3001','Brick 2x4','Bricks',.10,'m'],['3010','Brick 1x4','Bricks',.10,'m'],['3037','Slope 45 2x4','Slopes',.08,'m'],['3660','Slope Inv 2x2','Slopes',.10,'m'],['3020','Plate 2x4','Plates',.12,'n'],['3035','Plate 4x8','Plates',.06,'n'],['3068b','Tile 2x2','Tiles',.08,'s'],['2431','Tile 1x4','Tiles',.07,'s'],['3004','Brick 1x2','Bricks',.09,'s'],['60592','Window','Special',.04,'t'],['3062b','Round 1x1','Special',.05,'a'],['4589','Cone 1x1','Special',.04,'a'],['3941','Round 2x2 (ארובה)','Special',.04,'a'],['3023','Plate 1x2','Plates',.03,'m']],
+  plane:[['3020','Plate 2x4','Plates',.12,'m'],['3034','Plate 2x8','Plates',.10,'m'],['3035','Plate 4x8 (כנף)','Plates',.08,'m'],['3040','Slope 2x1','Slopes',.10,'m'],['85984','Slope 30 1x2','Slopes',.08,'s'],['3004','Brick 1x2','Bricks',.10,'m'],['3003','Brick 2x2','Bricks',.06,'m'],['3069b','Tile 1x2','Tiles',.08,'n'],['54200','Cheese Slope','Slopes',.07,'a'],['4589','Cone 1x1','Special',.04,'a'],['98138','Round Tile','Tiles',.05,'t'],['4070','Headlight','SNOT',.05,'n'],['3062b','Round 1x1','Special',.04,'n'],['3937','Hinge','Special',.03,'n']],
+  tower:[['3001','Brick 2x4','Bricks',.15,'m'],['3003','Brick 2x2','Bricks',.12,'m'],['3004','Brick 1x2','Bricks',.12,'s'],['3010','Brick 1x4','Bricks',.10,'m'],['3020','Plate 2x4','Plates',.10,'n'],['3031','Plate 4x4','Plates',.06,'n'],['3040','Slope 2x1','Slopes',.08,'a'],['3068b','Tile 2x2','Tiles',.07,'s'],['54200','Cheese Slope','Slopes',.06,'a'],['3062b','Round 1x1','Special',.05,'a'],['3023','Plate 1x2','Plates',.06,'s'],['87087','Stud Side','SNOT',.03,'m']]
+};
+const TYPE_META={
+  house:{n:'בית',phases:[['יסודות ורצפה',.15],['קירות קומה ראשונה',.3],['חלונות ופתחים',.15],['קומה שנייה / עליית גג',.2],['גג רעפים וגימור',.2]],pal:{m:1,s:2,a:5,n:86},diff:2,tech:['בנייה חופפת (staggered)','Jumper למרכוז חלונות']},
+  car:{n:'רכב',phases:[['שלדה וגלגלים',.25],['גוף תחתון',.25],['תא נהג ושמשות',.25],['גימור, פנסים ומדבקות',.25]],pal:{m:5,s:11,a:3,n:85},diff:2,tech:['בנייה 6-wide','SNOT לפנסים']},
+  technic:{n:'דגם טכניק',phases:[['שלדת Beams ראשית',.3],['סרנים והיגוי',.25],['תמסורת וגלגלי שיניים',.2],['מרכב ופאנלים',.25]],pal:{m:4,s:11,a:3,n:85},diff:4,tech:['Studless frame','תמסורת 8T→24T','חיזוק עם Frames']},
+  castle:{n:'טירה',phases:[['חומות ובסיס',.3],['מגדלי פינה',.3],['שער ושלבי הגנה',.2],['צריחים ודגלים',.2]],pal:{m:86,s:85,a:5,n:86},diff:3,tech:['Crenellations 1x1','טקסטורת אבן עם headlights']},
+  space:{n:'חללית',phases:[['גוף מרכזי',.3],['כנפיים',.25],['תא טייס',.2],['מנועים ו-Greebling',.25]],pal:{m:1,s:85,a:17,n:11},diff:3,tech:['Greebling','SNOT דו-כיווני']},
+  animal:{n:'חיה',phases:[['גוף',.35],['רגליים',.25],['ראש ופנים',.25],['זנב ופרטים',.15]],pal:{m:3,s:1,a:11,n:88},diff:3,tech:['פיסול עם Slopes','עיניים עם Round Tiles']},
+  motorcycle:{n:'אופנוע',phases:[['גלגלים ושלדה',.3],['מנוע ומיכל',.3],['מזלג וכידון',.25],['גימור',.15]],pal:{m:5,s:11,a:86,n:85},diff:3,tech:['גלגלים בשורה','מיכל משופע']},
+  pirate:{n:'ספינת פיראטים',phases:[['גוף הספינה',.3],['סיפון ומצודה',.25],['תרנים',.2],['מפרשים, דגל ותותחים',.25]],pal:{m:88,s:2,a:11,n:1},diff:4,tech:['גוף עץ עם חרטום','תרנים עגולים','מפרשים לבנים']},
+  dino:{n:'טירנוזאורוס',phases:[['רגליים וזנב',.3],['גוף ובטן',.25],['צוואר וראש',.25],['מלתעות, עיניים ושפיצים',.2]],pal:{m:6,s:288,a:2,n:11},diff:3,tech:['זנב מתרומם בשיפועים','לסת כפולה','שפיצי גב']},
+  formula:{n:'מכונית פורמולה 1',phases:[['רצפה, אף וכנף קדמית',.25],['מונוקוק ותא נהג',.25],['סייד-פודים ומכסה מנוע',.25],['כנף אחורית וגלגלים',.25]],pal:{m:5,s:11,a:1,n:85},diff:4,tech:['גלגלים חשופים (אחוריים גדולים)','כנפיים עם אנד-פלייטים','מונוקוק צר']},
+  crane:{n:'מנוף נייד',phases:[['שלדה, סרנים ומייצבים',.3],['קבינה וסיפון',.2],['צריח ומשקל נגד',.2],['זרוע טלסקופית, כבל וו',.3]],pal:{m:3,s:11,a:5,n:85},diff:4,tech:['זרוע טלסקופית מדורגת','מייצבים נפתחים','טבעת סיבוב']},
+  excavator:{n:'מחפרון',phases:[['זחלים ומסגרת',.3],['גוף וקבינה',.3],['זרוע',.25],['דלי וגימור',.15]],pal:{m:3,s:11,a:4,n:85},diff:4,tech:['שלדת זחלים','זרוע מפרקית','דלי הפוך']},
+  helicopter:{n:'מסוק',phases:[['גוף וחופה',.35],['זנב',.25],['מגלשיים',.15],['רוטור ראשי וזנב',.25]],pal:{m:5,s:1,a:11,n:85},diff:3,tech:['חופה שקופה','רוטור צולב','זנב מתחדד']},
+  truck:{n:'משאית',phases:[['שלדה ו-6 גלגלים',.25],['קבינה',.3],['ארגז מטען',.35],['גימור',.1]],pal:{m:5,s:85,a:1,n:11},diff:3,tech:['קבינה עם שמשה','ארגז סגור']},
+  train:{n:'רכבת',phases:[['שלדת קטר וגלגלים',.25],['דוד וארובה',.25],['תא נהג',.2],['קרון',.3]],pal:{m:6,s:11,a:5,n:85},diff:3,tech:['קטר קיטור','ארובה עגולה','קרון נגרר']},
+  figure:{n:'דמות מפוסלת',phases:[['גוף הגלימה בטקסטורת גוונים',.4],['ראש וכיפה',.25],['אוזניים ופנים',.2],['ידיים וגימור',.15]],pal:{m:156,s:2,a:69,n:150},diff:3,tech:['פיסול בלבנים (brick-built)','טקסטורת גלימה בגוונים מתחלפים','אוזניים ב-Wedge']},
+  robot:{n:'רובוט',phases:[['רגליים',.25],['גוף',.3],['זרועות',.25],['ראש ופרטים',.2]],pal:{m:86,s:11,a:17,n:85},diff:3,tech:['מפרקים עם Clips','SNOT לפרטי חזה']},
+  boat:{n:'ספינה',phases:[['גוף תחתון (Hull)',.35],['סיפון',.25],['גשר ותאים',.25],['ארובות ופרטים',.15]],pal:{m:1,s:7,a:5,n:2},diff:2,tech:['Slopes הפוכים לחרטום']},
+  plane:{n:'מטוס',phases:[['גוף המטוס',.3],['כנפיים',.3],['זנב',.2],['תא טייס ומנועים',.2]],pal:{m:1,s:5,a:11,n:86},diff:3,tech:['כנפיים מ-Plates גדולים']},
+  tower:{n:'דגם',phases:[['בסיס רחב',.3],['גוף מרכזי',.4],['חלק עליון וגימור',.3]],pal:{m:5,s:3,a:7,n:1},diff:2,tech:['בנייה חופפת','שכבות מתחלפות']}
+};
+function offlineVoxels(type,S,pal,style){
+  /* מחוללי מוצר: קופסה [x,z,y,w,d,h,c] · שיפוע [..,c,2,dir] (dir 0=+x 1=-x 2=+z 3=-z) · גלגל [..,1] · עמוד עגול [..,3] */
+  const V=[],m=pal.m,s=pal.s,a=pal.a,n=pal.n||85,G13=13;
+  const B=(x,z,y,w,d,h,c)=>V.push([x,z,y,w,d,h,c]);
+  const SL=(x,z,y,w,d,h,c,dir)=>V.push([x,z,y,w,d,h,c,2,dir]);
+  const WH=(x,z,y,dm,wd,c)=>V.push([x,z,y,dm,wd,dm,c,1]);
+  const RD=(x,z,y,dm,h,c)=>V.push([x,z,y,dm,dm,h,c,3]);
+  if(type==='car'||type==='technic'){
+    const tech=type==='technic';
+    if(!tech&&style==='fut'){ /* קונספט עתידני: טריז מונוקוק, חופת זכוכית, פסי אור */
+      const L=16;
+      [[2],[L-4]].forEach(([x])=>{WH(x,0,0,2,1,11);WH(x,5,0,2,1,11)});
+      B(1,1,0,L-2,4,1,85);                            // שלדה
+      B(0,0,0,1,6,1,G13);                             // פס אור קדמי תחתון
+      SL(0,0,1,5,6,2,m,1);                            // חרטום טריז ארוך
+      B(5,0,1,7,6,2,m);                               // גוף מונוקוק
+      SL(12,0,1,3,6,1,m,0); B(12,0,2,3,6,1,s);        // ירכתיים
+      B(15,0,1,1,6,2,17);                             // פס אור אחורי אדום-שקוף
+      SL(5,1,3,2,4,1,G13,1); B(7,1,3,2,4,1,G13); SL(9,1,3,2,4,1,G13,0); // חופת זכוכית מלאה
+      B(11,1,3,2,4,1,m);                              // סיפון אחורי
+      SL(12,0,3,2,1,1,a,0); SL(12,5,3,2,1,1,a,0);     // סנפירים
+      RD(13,1,3,1,1,11); RD(13,4,3,1,1,11); B(13,1,4,1,4,1,11); // כנף אחורית על עמודים
+    } else {
+      const L=tech?16:14, W2=6, dm=tech?3:2;
+      [[1],[L-dm-1]].forEach(([x])=>{WH(x,0,0,dm,1,11);WH(x,W2-1,0,dm,1,11)});
+      B(1,1,0,L-2,W2-2,1,85);                         // שלדה
+      B(0,0,tech?2:1,L,W2,1,m);                       // גוף
+      SL(0,0,tech?3:2,2,W2,1,m,1);                    // מכסה מנוע
+      B(2,0,tech?3:2,Math.round(L*.5),W2,1,m);        // גוף עליון
+      SL(Math.round(L*.55),0,tech?3:2,2,W2,1,s,0);    // ירידה אחורית
+      SL(3,1,tech?4:3,1,W2-2,1,G13,1);                // שמשה קדמית
+      B(4,1,tech?4:3,4,W2-2,1,s);                     // תא נהג
+      B(4,1,tech?5:4,4,W2-2,1,m);                     // גג
+      SL(8,1,tech?4:3,1,W2-2,1,G13,0);                // שמשה אחורית
+      B(0,1,tech?2:1,1,W2-2,1,33);                    // פנסים
+      if(style==='sport'&&!tech){
+        B(2,0,2,9,1,1,a); B(2,W2-1,2,9,1,1,a);        // פסי מרוץ בצד
+        SL(4,2,3,2,2,1,11,1);                         // פתח מנוע על המכסה
+        RD(12,1,3,1,1,11); RD(12,4,3,1,1,11); B(12,0,4,1,6,1,11); // ספוילר מוגבה
+      }
+      if(tech){B(12,0,5,1,W2,1,11); B(13,0,4,1,W2,1,11);
+        B(2,2,4,2,2,1,85); RD(L-2,1,2,1,1,85); RD(L-2,4,2,1,1,85)}
+    }
+  }
+  else if(type==='house'){
+    const W=12,D=10;
+    B(0,0,0,W,D,1,86);                            // בסיס
+    B(0,0,1,5,1,4,m); B(7,0,1,5,1,4,m); B(5,0,4,2,1,1,m); B(5,0,1,2,1,3,88); // חזית+דלת
+    B(0,D-1,1,W,1,4,m);                           // קיר אחורי
+    [0,W-1].forEach(x=>{ B(x,1,1,1,3,4,m); B(x,4,1,1,2,1,m); B(x,4,2,1,2,2,G13); B(x,4,4,1,2,1,m); B(x,6,1,1,3,4,m); }); // צדדים+חלונות
+    B(0,0,5,W,D,1,n);                             // תקרה
+    for(let k=0;k<4;k++){ SL(0,k,5+k,W,1,1,a,3); SL(0,D-1-k,5+k,W,1,1,a,2); } // גג רעפים דו-שיפועי
+    B(0,4,8,W,2,1,a);                             // רכס
+    RD(W-3,5,8,1,3,86);                           // ארובה
+  }
+  else if(type==='castle'){
+    const W=S+4;
+    [[0,0],[W-3,0],[0,W-3],[W-3,W-3]].forEach(([x,z])=>{ RD(x,z,0,3,8,m); for(let i=0;i<3;i+=2){B(x+i,z,8,1,1,1,m);B(x+i,z+2,8,1,1,1,m)} }); // מגדלים עגולים+שיניות
+    B(3,0,0,Math.floor(W/2)-4,1,5,m); B(Math.floor(W/2)+2,0,0,W-Math.floor(W/2)-5,1,5,m); B(Math.floor(W/2)-2,0,4,4,1,1,m); // חומה קד' עם שער
+    B(Math.floor(W/2)-2,0,0,4,1,4,88);            // שער עץ
+    B(3,W-1,0,W-6,1,5,m); B(0,3,0,1,W-6,5,m); B(W-1,3,0,1,W-6,5,m);
+    for(let x=3;x<W-3;x+=2){B(x,0,5,1,1,1,m);B(x,W-1,5,1,1,1,m)} // שיניות חומה
+    B(Math.floor(W/2)-3,Math.floor(W/2)-3,0,6,6,6,s); SL(Math.floor(W/2)-3,Math.floor(W/2)-3,6,6,6,1,a,0); // מצודה מרכזית
+  }
+  else if(type==='space'){
+    const L=S+10;
+    B(2,2,1,L-6,3,2,m);                           // גוף
+    SL(0,2,1,2,3,2,m,1);                          // חרטום
+    SL(4,2,3,2,3,1,G13,1); B(6,2,3,3,3,1,s);      // קוקפיט
+    SL(1,0,1,4,2,1,s,1); B(5,0,1,L-11,2,1,s); SL(L-6,0,1,3,2,1,s,0); // כנף ימין
+    SL(1,5,1,4,2,1,s,1); B(5,5,1,L-11,2,1,s); SL(L-6,5,1,3,2,1,s,0); // כנף שמאל
+    RD(L-4,2,1,1,2,85); RD(L-4,4,1,1,2,85);       // מנועים
+    B(L-4,2,0,1,1,1,4); B(L-4,4,0,1,1,1,4);       // להבות
+    B(9,3,4,2,1,1,a);                             // סנפיר
+  }
+  else if(type==='plane'){
+    const L=S+12;
+    B(2,3,1,L-4,3,2,1);                           // גוף
+    SL(0,3,1,2,3,2,1,1);                          // אף
+    SL(3,3,3,2,3,1,G13,1);                        // קוקפיט
+    B(Math.round(L*.35),0,2,3,9,1,m);             // כנפיים
+    RD(Math.round(L*.38),1,1,1,1,85); RD(Math.round(L*.38),7,1,1,1,85); // מנועים
+    B(L-3,3,3,2,3,1,m); SL(L-2,4,4,1,1,2,a,0);    // זנב+סנפיר
+    SL(L-3,1,2,1,2,1,m,3); SL(L-3,6,2,1,2,1,m,2); // מייצבים
+  }
+  else if(type==='boat'){
+    const L=S+10, D=6;
+    SL(0,1,0,2,D-2,1,m,1); B(2,1,0,L-4,D-2,1,m); SL(L-2,1,0,2,D-2,1,m,0); // גוף תחתון
+    B(1,0,1,L-2,D,1,m); B(0,0,2,L,D,1,s);         // גוף+סיפון
+    B(Math.round(L*.3),1,3,Math.round(L*.35),D-2,2,1); // תא
+    B(Math.round(L*.32),1,5,2,D-2,1,G13);         // גשר
+    RD(Math.round(L*.55),2,5,1,2,5); RD(Math.round(L*.62),2,5,1,2,5); // ארובות
+    SL(0,2,3,2,2,1,a,1);                          // חרטום עליון
+  }
+  else if(type==='animal'){
+    const Bo=Math.max(7,S);
+    B(1,1,2,Bo,4,3,m);                            // גוף
+    [[1,1],[1,4],[Bo-1,1],[Bo-1,4]].forEach(([x,z])=>B(x,z,0,1,1,2,m)); // רגליים
+    B(Bo+1,1,4,3,4,3,m); SL(Bo+4,2,4,1,2,1,s,0);  // ראש+חוטם
+    B(Bo+2,1,7,1,1,1,m); B(Bo+2,4,7,1,1,1,m);     // אוזניים
+    B(Bo+3,2,5,1,1,1,11); B(Bo+3,3,5,1,1,1,11);   // עיניים
+    SL(0,2,4,1,2,1,m,1);                          // זנב
+  }
+  else if(type==='robot'){
+    B(1,1,0,2,3,3,s); B(4,1,0,2,3,3,s);           // רגליים
+    B(1,1,3,5,3,1,85);                            // אגן
+    B(1,1,4,5,3,4,m);                             // גוף
+    B(0,1,5,1,2,3,s); B(6,1,5,1,2,3,s);           // זרועות
+    B(0,1,4,1,2,1,3); B(6,1,4,1,2,1,3);           // כפות
+    B(2,1,8,3,3,2,n);                             // ראש
+    B(2,1,9,1,1,1,G13); B(4,1,9,1,1,1,G13);       // עיניים
+    RD(3,2,10,1,1,5); B(2,2,4,3,1,1,17);          // אנטנה+לוח חזה
+  }
+  else if(type==='figure'){ /* דמות מפוסלת בסגנון brick-built */
+    const tans=[s,a,n]; const tan=i=>tans[((i*7)+3)%3]; // טקסטורת גלימה מנומרת
+    const rows=[[10,6],[11,7],[11,7],[10,6],[9,5],[8,5]]; // גלימה מתרחבת-מתכווצת
+    rows.forEach(([w,d],y)=>{
+      const cx=Math.floor((11-w)/2)+1, cz=Math.floor((7-d)/2);
+      for(let x=0;x<w;x+=2)B(cx+x,cz,y,Math.min(2,w-x),d,1,tan(x+y*3));
+    });
+    SL(0,3,3,2,2,1,m,1); SL(11,3,3,2,2,1,m,0);           // ידיים ירוקות
+    B(1,3,4,1,1,1,m); B(11,3,4,1,1,1,m);                  // כפות
+    const hx=5, hz=1;                                      // ראש
+    B(hx,hz,6,7,5,1,m); B(hx-1,hz,7,9,5,1,m); B(hx-1,hz,8,9,5,1,m);
+    SL(hx,hz,9,3,5,1,m,1); B(hx+3,hz,9,2,5,1,m); SL(hx+5,hz,9,3,5,1,m,0); // כיפת ראש
+    B(hx,hz,7,2,1,1,m); B(hx+2,hz,7,1,1,1,11); B(hx+3,hz,7,1,1,1,m); B(hx+4,hz,7,1,1,1,11); B(hx+5,hz,7,2,1,1,m); // פנים+עיניים
+    B(hx+2,hz,6,3,1,1,150);                                // פה/סנטר
+    SL(hx-4,2,8,3,3,1,m,1); SL(hx+8,2,8,3,3,1,m,0);       // אוזניים גדולות
+    B(hx-4,3,8,1,1,1,90); B(hx+10,3,8,1,1,1,90);          // פנים-אוזן בהיר
+    RD(8,3,10,1,1,m);                                      // ציצת ראש
+  }
+  else if(type==='motorcycle'){ /* אופנוע: שני גלגלים בשורה, מיכל, כידון, אגזוז */
+    WH(1,1,0,3,1,11); WH(9,1,0,3,1,11);                                 // גלגלים בשורה
+    B(3,1,1,6,1,1,n);                                                   // שלדה
+    B(4,1,2,2,1,1,n);                                                   // בלוק מנוע
+    SL(4,1,3,1,1,1,m,1); B(5,1,3,2,1,1,m);                              // מיכל דלק
+    B(7,1,3,2,1,1,11);                                                  // מושב
+    SL(0,1,3,2,1,1,m,1);                                                // כנף אחורית
+    B(9,1,2,1,1,2,n); B(9,0,4,1,3,1,11);                                // מזלג+כידון
+    B(10,1,2,1,1,1,33);                                                 // פנס
+    B(3,0,1,4,1,1,86);                                                  // צינור אגזוז
+    SL(10,1,3,1,1,1,13,0);                                              // שמשונת
+  }
+  else if(type==='pirate'){ /* ספינת פיראטים: גוף עץ, שני תרנים, מפרשים ודגל */
+    const L=S+12, D=8;
+    SL(0,2,0,2,D-4,1,88,1); B(2,2,0,L-4,D-4,1,88); SL(L-2,2,0,2,D-4,1,88,0); // קרקעית
+    B(1,1,1,L-2,D-2,1,88); B(0,1,2,L,D-2,1,88);                         // דפנות
+    B(0,1,3,L,1,1,s); B(0,D-2,3,L,1,1,s);                               // מעקה
+    B(1,2,3,L-2,D-4,1,2);                                               // סיפון עץ בהיר
+    B(L-5,2,4,5,D-4,2,88); B(L-5,2,6,5,D-4,1,2);                        // מצודת ירכתיים
+    RD(Math.round(L*.3),3,4,1,8,88);                                    // תורן ראשי
+    RD(Math.round(L*.6),3,4,1,7,88);                                    // תורן אחורי
+    B(Math.round(L*.28),1,7,1,5,3,1); B(Math.round(L*.56),2,7,1,4,2,1); // מפרשים
+    B(Math.round(L*.3),3,12,2,1,1,11);                                  // דגל שחור
+    B(2,1,3,1,1,1,11); B(5,1,3,1,1,1,11); B(2,D-2,3,1,1,1,11); B(5,D-2,3,1,1,1,11); // תותחים
+    SL(0,2,3,1,D-4,1,a,1);                                              // חרטום
+  }
+  else if(type==='dino'){ /* טירנוזאורוס: רגליים, זנב, מלתעות ושפיצים */
+    B(5,0,0,3,1,1,m); B(5,3,0,3,1,1,m);                                 // כפות
+    B(6,0,1,2,1,3,m); B(6,3,1,2,1,3,m);                                 // רגליים
+    SL(0,1,2,2,2,1,m,1); B(2,1,2,3,2,1,m); B(4,1,3,2,2,1,m);            // זנב מתרומם
+    B(6,1,3,4,2,3,m);                                                   // גוף
+    B(6,1,3,1,2,2,2);                                                   // בטן בהירה
+    B(9,0,4,1,1,1,m); B(9,3,4,1,1,1,m);                                 // ידיים קטנות
+    B(10,1,5,2,2,1,m);                                                  // צוואר
+    B(11,1,6,4,2,2,m);                                                  // ראש
+    B(12,1,5,3,2,1,s);                                                  // לסת תחתונה
+    B(11,1,8,1,1,1,11); B(11,2,8,1,1,1,11);                             // עיניים
+    SL(15,1,6,1,2,1,m,0);                                               // חרטום
+    SL(4,1,4,1,2,1,s,0); SL(6,1,6,1,2,1,s,0); SL(8,1,6,1,2,1,s,0);      // שפיצי גב
+  }
+  else if(type==='formula'){ /* מכונית פורמולה 1 בהשראת SF-24: גלגלים חשופים, כנפיים, סייד-פודים */
+    const L=22;
+    WH(3,0,0,2,1,11); WH(3,6,0,2,1,11);                                 // גלגלים קדמיים
+    WH(15,0,0,3,1,11); WH(15,6,0,3,1,11);                               // גלגלים אחוריים גדולים
+    B(0,0,0,2,7,1,m);                                                   // כנף קדמית רחבה
+    B(0,0,1,1,1,1,m); B(0,6,1,1,1,1,m);                                 // אנד-פלייטים קדמיים
+    SL(2,3,1,2,1,1,m,1); B(4,3,1,3,1,1,m);                              // חרטום אף צר
+    B(4,2,0,14,3,1,11);                                                 // רצפה שחורה
+    B(7,2,1,8,3,2,m);                                                   // מונוקוק
+    SL(7,3,3,1,1,1,13,1);                                               // שמשת תא
+    B(9,3,3,2,1,1,11);                                                  // תא נהג (Halo)
+    B(10,1,1,5,1,2,m); B(10,5,1,5,1,2,m);                               // סייד-פודים
+    SL(15,1,1,2,1,1,m,0); SL(15,5,1,2,1,1,m,0);                         // ירידת פודים
+    SL(11,3,3,4,1,1,m,0);                                               // מכסה מנוע יורד
+    B(18,3,1,2,1,2,11);                                                 // עמוד כנף
+    B(17,0,3,2,7,1,m);                                                  // כנף אחורית רחבה
+    B(17,0,2,1,1,1,s); B(17,6,2,1,1,1,s);                               // אנד-פלייטים אחוריים
+    B(0,3,1,1,1,1,a);                                                   // חוד האף
+  }
+  else if(type==='crane'){ /* מנוף נייד בהשראת 42009: 5 סרנים, מייצבים, זרוע טלסקופית, וו */
+    const L=20;
+    for(let i=0;i<5;i++){WH(2+i*3,1,0,2,1,11);WH(2+i*3,6,0,2,1,11)}    // 10 גלגלים
+    B(1,2,0,L-2,4,1,n);                                                 // שלדה
+    B(0,1,1,L,6,1,m);                                                   // סיפון
+    B(0,1,2,3,6,3,m); SL(3,2,3,1,4,2,13,0); B(0,2,5,3,4,1,m);           // קבינת נהג+שמשה
+    [[6],[15]].forEach(([x])=>{B(x,0,1,1,1,1,m);B(x,0,0,1,1,1,n);       // מייצבים
+                                B(x,7,1,1,1,1,m);B(x,7,0,1,1,1,n)});
+    RD(11,3,2,3,1,n);                                                   // טבעת סיבוב
+    B(8,2,3,6,4,2,m); SL(8,2,5,1,4,1,13,1);                             // בית מנוף+חלון
+    B(6,2,3,2,4,2,11);                                                  // משקל נגד
+    for(let i=0;i<9;i++){const w3=i<3?4:i<6?3:2;                        // זרוע טלסקופית אלכסונית
+      B(10+i,Math.floor((8-w3)/2),5+i,2,w3,1,i%2?m:s)}
+    B(19,3,8,1,1,6,11);                                                 // כבל
+    B(19,3,7,1,2,1,n); SL(19,4,6,1,1,1,n,2);                            // וו
+  }
+  else if(type==='excavator'){ /* מחפרון זחלים עם זרוע ודלי */
+    B(0,0,0,12,2,2,11); B(0,6,0,12,2,2,11);                             // זחלים
+    RD(2,0,0,2,2,n); RD(8,0,0,2,2,n); RD(2,6,0,2,2,n); RD(8,6,0,2,2,n); // גלגלי זחל
+    B(1,2,1,10,4,1,n);                                                  // מסגרת
+    RD(5,3,2,3,1,n);                                                    // טבעת
+    B(0,2,3,2,4,2,11);                                                  // משקל נגד (מאחור)
+    B(2,2,3,6,4,2,m); SL(7,2,3,1,4,2,13,0);                             // גוף+קבינה קדמית
+    B(2,2,5,6,4,1,m);                                                   // גג
+    B(8,3,5,2,2,1,m); B(10,3,4,2,2,1,m); B(12,3,3,2,2,1,m); B(14,3,1,2,2,2,m); // זרוע יורדת
+    B(14,2,0,3,4,1,n); SL(17,2,0,1,4,1,n,0);                            // דלי
+  }
+  else if(type==='helicopter'){ /* מסוק עם רוטור */
+    B(2,2,1,8,3,3,m); SL(0,2,1,2,3,3,13,1);                             // גוף+חופה
+    SL(10,2,2,5,3,1,m,0); B(15,2,2,1,3,1,m);                            // זנב מתחדד
+    B(16,2,3,1,1,2,m); SL(16,3,3,1,1,1,s,2);                            // סנפיר+רוטור זנב
+    B(1,1,0,10,1,1,n); B(1,5,0,10,1,1,n);                               // מגלשיים
+    RD(5,3,4,1,1,n);                                                    // תורן רוטור
+    B(1,3,5,10,1,1,11); B(5,0,5,1,7,1,11);                              // להבי רוטור צולבים
+  }
+  else if(type==='truck'){ /* משאית: קבינה + ארגז מטען */
+    for(let i=0;i<3;i++){WH(2+i*5,0,0,2,1,11);WH(2+i*5,5,0,2,1,11)}     // 6 גלגלים
+    B(1,1,0,15,4,1,n);                                                  // שלדה
+    B(0,0,1,4,6,3,m); SL(4,1,2,1,4,2,13,0); B(0,1,4,4,4,1,m);           // קבינה+שמשה
+    B(0,1,1,1,4,1,33);                                                  // פנסים
+    B(5,0,1,11,6,4,s);                                                  // ארגז מטען
+    B(5,0,5,11,6,1,1);                                                  // גג ארגז
+  }
+  else if(type==='train'){ /* קטר + קרון */
+    for(let i=0;i<3;i++){WH(2+i*3,0,0,2,1,11);WH(2+i*3,5,0,2,1,11)}     // גלגלי קטר
+    B(1,1,0,10,4,1,11);                                                 // שלדה
+    SL(0,1,0,2,4,1,s,1);                                                // חוטם מסילה
+    B(1,1,1,7,4,3,m); RD(3,2,4,1,2,11);                                 // דוד+ארובה
+    B(8,1,1,3,4,4,m); B(8,1,3,1,4,1,13);                                // תא נהג+חלון
+    B(8,1,5,3,4,1,s);                                                   // גג תא
+    WH(14,0,0,2,1,11); WH(14,5,0,2,1,11); WH(17,0,0,2,1,11); WH(17,5,0,2,1,11); // קרון
+    B(13,1,0,7,4,1,11); B(13,1,1,7,4,2,a); B(13,1,3,7,4,1,s);
+  }
+  else{ /* tower */
+    let w=S+2,x=0,z=0,y=0; const cols=[m,s,a,n]; let i=0;
+    while(w>3){ B(x,z,y,w,w,2,cols[i%4]); x++;z++;w-=2;y+=2;i++ }
+    SL(x,z,y,w,w,1,a,0); RD(x+Math.floor(w/2),z+Math.floor(w/2),y+1,1,3,3);
+  }
+  return V;
+}
+function offlinePlan(inp){
+  const type=(inp.arch&&inp.arch!=='auto')?inp.arch:detectType(inp.desc,inp.theme);
+  const meta=TYPE_META[type];
+  const userCols=parseColors(inp.colors||'')
+  const pal=schemeFor(type,detectStyle(inp.desc));
+  if(userCols[0])pal.m=userCols[0]; if(userCols[1])pal.s=userCols[1]; if(userCols[2])pal.a=userCols[2];
+  let total=SIZE_PIECES[inp.size]||({formula:640,motorcycle:260,pirate:780,dino:420,crane:950,excavator:720,helicopter:380,truck:460,train:620,figure:520,house:420,car:160,technic:700,castle:600,space:300,animal:260,robot:220,boat:340,plane:280,tower:200}[type]);
+  if(inp.budget&&+inp.budget>0)total=Math.min(total,Math.round(+inp.budget/0.35));
+  const RECIPE_ALIAS={formula:'technic',motorcycle:'car',pirate:'boat',dino:'animal',crane:'technic',excavator:'technic',helicopter:'plane',truck:'car',train:'car'};
+  const recipe=RECIPES[type]||RECIPES[RECIPE_ALIAS[type]]||RECIPES.tower;
+  const colOf=r=>({m:pal.m,s:pal.s,a:pal.a,n:meta.pal.n,t:12}[r]);
+  let bom=recipe.map(([p,name,cat,share,role])=>{
+    const cid=colOf(role),c=BL_COLORS[cid]||BL_COLORS[11];
+    return{partNum:p,name,colorName:c[0],blColorId:cid,hex:c[1],qty:Math.max(1,Math.round(total*share)),category:cat};
+  });
+  const sum=bom.reduce((s,b)=>s+b.qty,0);
+  bom.forEach(b=>b.qty=Math.max(1,Math.round(b.qty*total/sum)));
+  const diff=inp.diff&&inp.diff!=='auto'?+inp.diff:meta.diff;
+  const S=Math.max(6,Math.min(18,Math.round(Math.sqrt(total)/1.6)));
+  const plan={
+    name:meta.n+(inp.desc?' — '+inp.desc.split(/[,.]/)[0].slice(0,38):''),
+    theme:inp.theme==='auto'?(type==='technic'?'technic':type==='castle'?'castle':type==='space'?'star-wars':'city'):inp.theme,
+    difficulty:diff, estimatedHours:Math.round(total/150*10)/10||.5, ageRange:diff<=2?'6+':diff===3?'9+':'12+',
+    dimensions:{studsL:S+4,studsW:S,bricksH:Math.round(S*.8),cm:Math.round((S+4)*.8)+'×'+Math.round(S*.8)+' ס"מ בקירוב'},
+    totalPieces:total,
+    overview:'תוכנית שנוצרה במנוע המומחה המובנה של האפליקציה לפי כללי תכנון לגו מקצועיים: פירוק חלקים סטנדרטי ל'+meta.n+', מק"טים אמיתיים מ-BrickLink, ופלטת צבעים לפי בקשתך. אפשר לעדן כמויות בלשונית החלקים.',
+    techniques:meta.tech, palette:[pal.m,pal.s,pal.a],
+    phases:meta.phases.map(([t,sh])=>({title:t,description:'',pieces:Math.round(total*sh)})),
+    motorization:{needed:!!inp.motor,system:inp.motor?'LEGO Powered Up':'',components:inp.motor?[{partNum:'88009',name:'Powered Up Hub',qty:1},{partNum:'88013',name:'Motor L',qty:type==='technic'?2:1},{partNum:'88010',name:'Remote Control',qty:1}]:[]},
+    alternatives:['בקש מה-AI (כשזמין) גרסה מפורטת יותר','הגדל/הקטן בבחירת גודל אחר'],
+    tips:['הוסף 5-10% רזרבה לחלקים קטנים','חפוף תפרים בין שורות לבנים לחוזק','בדוק ב-Pick a Brick לפני BrickLink לחלקים סטנדרטיים'],
+    voxels:offlineVoxels(type,S,pal,detectStyle(inp.desc)), source:'offline'
+  };
+  if(plan.motorization.needed)plan.motorization.components.forEach(c=>bom.push({partNum:c.partNum,name:c.name,colorName:'White',blColorId:1,hex:'#FFFFFF',qty:c.qty,category:'Special'}));
+  plan.bom=bom;
+  return plan;
+}
+
+/* === MOSAIC ENGINE — עיבוד תמונה מקומי, דיוק פיקסל, ללא AI === */
+document.getElementById('pMode').onchange=()=>{document.getElementById('mosaicOpts').style.display=v('pMode')==='mosaic'?'block':'none'};
+function mosaicPalette(){
+  const sets={gray:[1,49,86,85,11],
+    rich:[1,49,86,85,11,5,59,4,3,33,2,88,150,90,6,34,7,105,63,23,71],
+    full:[1,49,86,85,11,5,59,4,3,33,2,88,150,90,6,34,7,105,63,23,71,36,288,40,156,42,55,24,47,8,69]};
+  const ids=sets[v('mPal')]||sets.rich;
+  const lin=x=>Math.pow(x/255,2.2); // sRGB→ליניארי לפרספציה נכונה
+  return ids.map(id=>{const n=parseInt(BL_COLORS[id][1].slice(1),16);
+    const r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+    return{id,r,g,b,lr:lin(r),lg:lin(g),lb:lin(b)}});
+}
+function nearestCol(pal,r,g,b){
+  const lin=x=>Math.pow(Math.max(0,Math.min(255,x))/255,2.2);
+  const lr=lin(r),lg=lin(g),lb=lin(b);
+  let best=pal[0],bd=Infinity;
+  for(const c of pal){
+    const d=2*(lr-c.lr)*(lr-c.lr)+4*(lg-c.lg)*(lg-c.lg)+3*(lb-c.lb)*(lb-c.lb);
+    if(d<bd){bd=d;best=c}
+  }
+  return best;
+}
+function autoLevels(buf,n){ /* מתיחת היסטוגרמה 2%–98% לכל ערוץ — חדות וצבע */
+  for(let ch=0;ch<3;ch++){
+    const vals=new Float32Array(n);
+    for(let i=0;i<n;i++)vals[i]=buf[i*3+ch];
+    const srt=Array.from(vals).sort((a,b)=>a-b);
+    const lo=srt[Math.floor(n*.02)], hi=srt[Math.floor(n*.98)];
+    const rng=Math.max(1,hi-lo);
+    for(let i=0;i<n;i++)buf[i*3+ch]=(buf[i*3+ch]-lo)*255/rng;
+  }
+}
+function makeMosaicPlan(){
+  const p=ensureProject(); captureInputs(p);
+  if(!imgData){toast('פסיפס דורש תמונה — העלה תמונה 📷');return}
+  const [MW,MH]=(v('mSize')||'48x48').split('x').map(Number);
+  const im=new Image();
+  im.onload=()=>{
+    try{
+      const cv=document.createElement('canvas'); cv.width=MW; cv.height=MH;
+      const cx=cv.getContext('2d');
+      const s=Math.max(MW/im.width,MH/im.height);
+      const sw=MW/s, sh=MH/s;
+      cx.drawImage(im,(im.width-sw)/2,(im.height-sh)/2,sw,sh,0,0,MW,MH);
+      const px=cx.getImageData(0,0,MW,MH).data;
+      const pal=mosaicPalette(), dither=document.getElementById('mDither').checked;
+      const buf=new Float32Array(MW*MH*3);
+      for(let i=0;i<MW*MH;i++){buf[i*3]=px[i*4];buf[i*3+1]=px[i*4+1];buf[i*3+2]=px[i*4+2]}
+      autoLevels(buf,MW*MH);
+      const grid=new Array(MW*MH);
+      for(let y=0;y<MH;y++){
+        const ltr=(y%2===0); /* dithering נחשי — מבטל ארטיפקטים של תולעים */
+        for(let k=0;k<MW;k++){
+          const x=ltr?k:MW-1-k, i=y*MW+x, sgn=ltr?1:-1;
+          const r=Math.max(0,Math.min(255,buf[i*3])), g=Math.max(0,Math.min(255,buf[i*3+1])), b=Math.max(0,Math.min(255,buf[i*3+2]));
+          const c=nearestCol(pal,r,g,b);
+          grid[i]=c.id;
+          if(dither){
+            const er=r-c.r,eg=g-c.g,eb=b-c.b;
+            const push=(xx,yy,f)=>{if(xx<0||xx>=MW||yy>=MH)return;const j=(yy*MW+xx)*3;buf[j]+=er*f;buf[j+1]+=eg*f;buf[j+2]+=eb*f};
+            push(x+sgn,y,7/16);push(x-sgn,y+1,3/16);push(x,y+1,5/16);push(x+sgn,y+1,1/16);
+          }
+        }
+      }
+      const vox=[],counts={};
+      for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const c=grid[y*MW+x];vox.push([x,y,0,1,1,1,c]);counts[c]=(counts[c]||0)+1}
+      const bom=Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([cid,q])=>{
+        const c=BL_COLORS[cid]||BL_COLORS[11];
+        return{partNum:'98138',name:'Round Tile 1x1',colorName:c[0],blColorId:+cid,hex:c[1],qty:q,category:'Tiles'};
+      });
+      bom.push({partNum:'3811',name:'Baseplate 32x32',colorName:'Black',blColorId:11,hex:'#212121',qty:Math.ceil(MW/32)*Math.ceil(MH/32),category:'Plates'});
+      const plan={
+        name:'פסיפס — '+((p.input.desc||'').split(/[,.]/)[0].slice(0,30)||'מהתמונה'),
+        theme:'creator', difficulty:2, estimatedHours:Math.round(MW*MH/500*10)/10, ageRange:'8+',
+        dimensions:{studsL:MW,studsW:MH,bricksH:1,cm:Math.round(MW*.8)+'×'+Math.round(MH*.8)+' ס"מ'},
+        totalPieces:MW*MH,
+        overview:'פסיפס בסגנון LEGO Art שנוצר בעיבוד תמונה מדויק בתוך האפליקציה (ללא AI): '+MW+'×'+MH+' סטאדים, '+(bom.length-1)+' צבעים מפלטת לגו'+(dither?', עם Dithering לנאמנות מקסימלית לתמונה':'')+'. הכמויות ברשימת החלקים הן ספירה מדויקת של כל אריח.',
+        techniques:['LEGO Art','Round Tiles 1×1',dither?'Floyd–Steinberg Dithering':'Color Quantization'],
+        palette:bom.slice(0,3).map(b=>b.blColorId),
+        phases:[1,2,3,4].map(k=>({title:'שורות '+(Math.round(MH/4*(k-1))+1)+'–'+Math.round(MH/4*k),description:'הנח אריחים שורה-שורה לפי התצוגה — היעזר ב-⏮⏭ למעקב',pieces:Math.round(MW*MH/4)})),
+        motorization:{needed:false,system:'',components:[]},
+        alternatives:['נסה גווני אפור לפורטרטים','הגדל ל-64×64 לפרטים עדינים יותר'],
+        tips:['מיין את האריחים לפי צבע לפני שמתחילים','עבוד שורה-שורה, סמן שורות שהושלמו','לתלייה: הדבק את הלוחות למסגרת תמונה עמוקה'],
+        voxels:vox, source:'mosaic'
+      };
+      p.plan=plan; p.bom=bom.map(x=>({...x})); p.name=plan.name;
+      saveState(); renderResult(); showTab('result'); toast('הפסיפס מוכן — '+MW+'×'+MH+' 🖼');
+    }catch(e){console.error(e);toast('⚠ שגיאה בעיבוד הפסיפס: '+e.message)}
+  };
+  im.onerror=()=>toast('⚠ התמונה לא נטענה — נסה להעלות מחדש');
+  im.src='data:'+(imgType||'image/jpeg')+';base64,'+imgData;
+}
+
+async function planWithAI(){
+  if(v('pMode')==='mosaic'){makeMosaicPlan();return}
+  const p=ensureProject(); captureInputs(p);
+  if(!p.input.desc && !imgData){toast('כתוב תיאור או העלה תמונה 🧱');return}
+  const btn=document.getElementById('goBtn'), ld=document.getElementById('loader');
+  const lt=document.getElementById('loaderTxt');
+  btn.disabled=true; ld.classList.add('on');
+  try{
+    /* שלב 1: תוכנית */
+    lt.textContent='שלב 1/3: המומחה מתכנן את הדגם...';
+    const contentA=[];
+    if(imgData) contentA.push({type:'image',source:{type:'base64',media_type:imgType,data:imgData}});
+    contentA.push({type:'text',text:buildPromptA(p.input)});
+    const dataA=await callClaude(contentA);
+    if(dataA.error) throw new Error(dataA.error.message||'API error');
+    const txtA=(dataA.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('\n');
+    const plan=extractJSON(txtA,false);
+    if(!plan.name||!plan.totalPieces) throw new Error('התוכנית חזרה חלקית — נסה שוב');
+
+    /* שלב 2: רשימת חלקים דחוסה */
+    lt.textContent='שלב 2/3: סופר לבנים ובוחר מק"טים...';
+    let bom=[];
+    try{
+      const dataB=await callClaude([{type:'text',text:buildPromptB(plan,p.input)}]);
+      if(dataB.error) throw new Error(dataB.error.message);
+      const txtB=(dataB.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('\n');
+      const rows=extractJSON(txtB,true);
+      bom=rows.filter(r=>Array.isArray(r)&&r[0]).map(r=>{
+        const cid=+r[1]||11, c=BL_COLORS[cid]||BL_COLORS[11];
+        return {partNum:String(r[0]),name:String(r[3]||r[0]),colorName:c[0],blColorId:cid,hex:c[1],
+                qty:Math.max(1,+r[2]||1),category:String(r[4]||'Special')};
+      });
+    }catch(be){
+      console.error('BOM step failed',be);
+      toast('התוכנית נוצרה, אך רשימת החלקים נכשלה — לחץ שוב על "תכנן" או הוסף ידנית');
+    }
+    plan.bom=bom;
+    p.plan=plan; p.bom=bom.map(x=>({...x})); p.name=plan.name||p.name;
+    if(plan.motorization&&plan.motorization.needed&&Array.isArray(plan.motorization.components)){
+      plan.motorization.components.forEach(c=>p.bom.push({partNum:c.partNum,name:c.name,colorName:'Black',blColorId:11,hex:'#212121',qty:c.qty||1,category:'Special'}));
+    }
+    /* רשימת החלקים = מקור האמת: מסנכרן את מונה החלקים אליה */
+    const bomSum=p.bom.reduce((s2,b2)=>s2+(+b2.qty||0),0);
+    if(bomSum>0)plan.totalPieces=bomSum;
+    /* תצוגת מוצר מיידית מהמחולל הפרמטרי — נאמנה, בלי תלות ב-AI */
+    try{
+      const vType=(p.input.arch&&p.input.arch!=='auto')?p.input.arch:detectType(p.input.desc,plan.theme);
+      const vStyle=detectStyle(p.input.desc);
+      const vPal=schemeFor(vType,vStyle);
+      const uc=parseColors((p.input.colors||'')+' '+(p.input.desc||''));
+      if(uc[0])vPal.m=uc[0]; if(uc[1])vPal.s=uc[1]; if(uc[2])vPal.a=uc[2];
+      const vS=Math.max(6,Math.min(18,Math.round(Math.sqrt(plan.totalPieces||300)/1.6)));
+      plan.voxels=offlineVoxels(vType,vS,vPal,vStyle); plan.voxelSrc='product'; plan.voxelsProduct=plan.voxels;
+    }catch(e){console.error(e)}
+    saveState(); renderResult(); showTab('result'); toast('התוכנית מוכנה! 🎉');
+    if(vType==='tower'&&(p.input.desc||'').length>3){ /* נושא לא מוכר → AI-אדריכל מרכיב מוצר */
+      try{await genPreview(true); toast('ה-AI-אדריכל הרכיב את המוצר 🏗')}catch(e){}
+    }
+  }catch(e){
+    console.error(e);
+    /* ה-AI לא זמין → מנוע המומחה המובנה */
+    try{
+      const plan=offlinePlan(p.input);
+      p.plan=plan; p.bom=plan.bom.map(x=>({...x})); p.name=plan.name;
+      saveState(); renderResult(); showTab('result');
+      toast('ה-AI לא זמין כאן — התוכנית נוצרה במנוע המומחה המובנה ⚙️');
+    }catch(e2){toast('⚠ '+(e.message||'שגיאה בתכנון'))}
+  }finally{btn.disabled=false; ld.classList.remove('on')}
+}
+document.getElementById('goBtn').onclick=planWithAI;
+
+/* image upload */
+const drop=document.getElementById('drop'), fileIn=document.getElementById('imgFile'), prev=document.getElementById('imgPrev');
+drop.onclick=()=>fileIn.click();
+drop.ondragover=e=>{e.preventDefault()};
+drop.ondrop=e=>{e.preventDefault(); if(e.dataTransfer.files[0]) readImg(e.dataTransfer.files[0])};
+fileIn.onchange=()=>{if(fileIn.files[0]) readImg(fileIn.files[0])};
+function readImg(f){
+  const r=new FileReader();
+  r.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      // דחיסה: מקסימום 1280px, JPEG — מונע שגיאות שרת מתמונות טלפון כבדות
+      const MAX=1280;
+      let w=img.width,h=img.height;
+      if(Math.max(w,h)>MAX){const k=MAX/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k)}
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      const dataUrl=cv.toDataURL('image/jpeg',0.85);
+      imgData=dataUrl.split(',')[1]; imgType='image/jpeg';
+      prev.src=dataUrl; prev.style.display='block'; drop.classList.add('has');
+      drop.firstChild.textContent='✔ תמונה נטענה — לחץ להחלפה ';
+    };
+    img.src=r.result;
+  };
+  r.readAsDataURL(f);
+}
+
+/* === RESULT render === */
+const THEME_HE={city:'City',technic:'Technic',creator:'Creator','star-wars':'חלל',castle:'טירות',basic:'קלאסי',other:'כללי'};
+function renderResult(){
+  const p=cur();
+  const has=p&&p.plan;
+  document.getElementById('resEmpty').style.display=has?'none':'block';
+  document.getElementById('resWrap').style.display=has?'block':'none';
+  if(!has) return;
+  const pl=p.plan;
+  const livePieces=(p.bom&&p.bom.length)?p.bom.reduce((s2,b2)=>s2+(+b2.qty||0),0):pl.totalPieces;
+  document.getElementById('rName').textContent=pl.name;
+  const diffBricks='<span class="diff-bricks">'+[1,2,3,4,5].map(i=>`<i class="${i<=pl.difficulty?'f':''}"></i>`).join('')+'</span>';
+  document.getElementById('rStats').innerHTML=`
+    <div class="stat" style="background:var(--red)"><b>${livePieces}</b><span>חלקים</span></div>
+    <div class="stat" style="background:var(--blue)"><b>${diffBricks}</b><span>קושי ${pl.difficulty}/5</span></div>
+    <div class="stat" style="background:var(--green)"><b>${pl.estimatedHours}</b><span>שעות בנייה</span></div>
+    <div class="stat" style="background:var(--orange)"><b>${pl.ageRange}</b><span>גיל</span></div>
+    <div class="stat" style="background:var(--ink)"><b style="font-size:.85rem">${pl.dimensions?.cm||''}</b><span>${pl.dimensions?`${pl.dimensions.studsL}×${pl.dimensions.studsW} סטאדים`:''}</span></div>`;
+  document.getElementById('rOverview').textContent=pl.overview;
+  document.getElementById('rTech').innerHTML='<b style="font-size:.8rem">טכניקות: </b>'+(pl.techniques||[]).map(t=>`<span class="chip">${esc(t)}</span>`).join('')+` <span class="chip" style="background:var(--yellow)">${THEME_HE[pl.theme]||pl.theme}</span>`+(pl.source==='mosaic'?' <span class="chip" style="background:var(--orange); color:#fff">🖼 פסיפס מדויק</span>':pl.source==='offline'?' <span class="chip" style="background:var(--ink); color:#fff">⚙️ מנוע מובנה</span>':' <span class="chip" style="background:var(--green); color:#fff">🤖 AI</span>');
+  document.getElementById('rPhases').innerHTML=(pl.phases||[]).map((f,i)=>
+    `<div class="phase"><h3>שלב ${i+1}: ${esc(f.title)}</h3><p>${esc(f.description)}</p><span class="pc">≈ ${f.pieces} חלקים</span></div>`).join('');
+  const mc=document.getElementById('rMotorCard');
+  if(pl.motorization&&pl.motorization.needed){
+    mc.style.display='block';
+    document.getElementById('rMotor').innerHTML=`<b>מערכת:</b> ${esc(pl.motorization.system)}<br>`+
+      (pl.motorization.components||[]).map(c=>`• ${esc(c.name)} (${esc(c.partNum)}) × ${c.qty}`).join('<br>');
+  } else mc.style.display='none';
+  document.getElementById('rTips').innerHTML=(pl.tips||[]).map(t=>`<li>${esc(t)}</li>`).join('');
+  document.getElementById('rAlts').innerHTML=(pl.alternatives||[]).length?'<b style="font-size:.8rem">רעיונות להרחבה: </b>'+pl.alternatives.map(a=>`<span class="chip">${esc(a)}</span>`).join(''):'';
+  initViewer();
+}
+function esc(s){return String(s??'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]))}
+
+/* === BOM === */
+function renderBOM(){
+  const p=cur(); const body=document.getElementById('bomBody');
+  const bom=p?p.bom||[]:[];
+  const cats=[...new Set(bom.map(b=>b.category))].sort();
+  const fSel=document.getElementById('bomFilter');
+  const keep=fSel.value;
+  fSel.innerHTML='<option value="">כל הקטגוריות</option>'+cats.map(c=>`<option ${c===keep?'selected':''}>${esc(c)}</option>`).join('');
+  const q=v('bomSearch').toLowerCase(), f=fSel.value;
+  const rows=bom.map((b,i)=>({b,i})).filter(({b})=>(!f||b.category===f)&&(!q||(b.name+b.partNum+b.colorName).toLowerCase().includes(q)));
+  body.innerHTML=rows.length?rows.map(({b,i})=>`<tr>
+    <td><span class="sw" style="background:${esc(b.hex||'#ccc')}" title="${esc(b.colorName)}"></span></td>
+    <td><a href="https://www.bricklink.com/v2/catalog/catalogitem.page?P=${encodeURIComponent(b.partNum)}" target="_blank" rel="noopener" style="font-weight:700">${esc(b.partNum)}</a></td>
+    <td>${esc(b.name)}<div class="hint">${esc(b.colorName)}</div></td>
+    <td>${esc(b.category)}</td>
+    <td><input class="qty" type="number" min="0" value="${b.qty}" onchange="setQty(${i},this.value)"></td>
+    <td><button class="del-row" onclick="delRow(${i})" title="מחק">✕</button></td>
+  </tr>`).join(''):'<tr><td colspan="6" class="empty">אין חלקים תואמים</td></tr>';
+  const total=bom.reduce((s,b)=>s+(+b.qty||0),0);
+  const spare=parseInt(v('spare'))||0;
+  document.getElementById('bomTotal').textContent=total;
+  document.getElementById('bomTotalSpare').textContent=Math.ceil(total*(1+spare/100));
+}
+function setQty(i,val){const p=cur(); if(p&&p.bom[i]){p.bom[i].qty=Math.max(0,parseInt(val)||0); saveState(); renderBOM()}}
+function delRow(i){const p=cur(); if(p){p.bom.splice(i,1); saveState(); renderBOM()}}
+document.getElementById('bomFilter').onchange=renderBOM;
+document.getElementById('bomSearch').oninput=renderBOM;
+document.getElementById('spare').onchange=()=>{saveState();renderBOM()};
+document.getElementById('addRowBtn').onclick=()=>{
+  const p=ensureProject();
+  const pn=prompt('מק"ט BrickLink (למשל 3001):'); if(!pn)return;
+  const nm=prompt('שם החלק:','Brick 2x4')||pn;
+  const cid=parseInt(prompt('BrickLink Color ID (למשל 5=אדום, 3=צהוב, 7=כחול, 11=שחור, 1=לבן):','5'))||5;
+  const q=parseInt(prompt('כמות:','1'))||1;
+  const c=BL_COLORS[cid]||['Red','#B40000'];
+  p.bom.push({partNum:pn.trim(),name:nm,colorName:c[0],blColorId:cid,hex:c[1],qty:q,category:'Special'});
+  saveState(); renderBOM(); toast('החלק נוסף ✔');
+};
+
+/* === ORDER === */
+function withSpare(){
+  const p=cur(); if(!p) return [];
+  const sp=1+((parseInt(v('spare'))||0)/100);
+  return (p.bom||[]).filter(b=>b.qty>0).map(b=>({...b,qty:Math.ceil(b.qty*sp)}));
+}
+const PRICE={Bricks:.10,Plates:.07,Tiles:.06,Slopes:.06,SNOT:.10,Technic:.12,Gears:.25,Wheels:.35,Minifig:2.5,Special:.5};
+function renderOrder(){
+  const items=withSpare();
+  const total=items.reduce((s,b)=>s+b.qty,0);
+  let cost=items.reduce((s,b)=>s+b.qty*(PRICE[b.category]??.12),0);
+  const ship=total?18:0, usd=x=>'$'+x.toFixed(2), ils=x=>'₪'+Math.round(x*3.7);
+  document.getElementById('priceBox').innerHTML=total?`
+    <div class="price-line"><span>${total} חלקים (כולל רזרבה)</span><span>${usd(cost)}</span></div>
+    <div class="price-line"><span>משלוח משוער לישראל</span><span>${usd(ship)}</span></div>
+    <div class="price-line total"><span>סה"כ משוער</span><span>${usd(cost+ship)} ≈ ${ils(cost+ship)}</span></div>`
+    :'<div class="empty">אין חלקים להזמנה עדיין</div>';
+  /* PaB links: top 12 items */
+  const pab=items.slice().sort((a,b)=>b.qty-a.qty).slice(0,12);
+  document.getElementById('pabLinks').innerHTML=pab.map(b=>
+    `<a class="chip" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.lego.com/en-us/pick-and-build/pick-a-brick?query=${encodeURIComponent(b.partNum)}">${esc(b.partNum)} ×${b.qty}</a>`).join('')||'<span class="hint">אין חלקים</span>';
+  /* split advice */
+  const tech=items.filter(b=>['Technic','Gears'].includes(b.category)).reduce((s,b)=>s+b.qty,0);
+  const std=total-tech;
+  document.getElementById('splitAdvice').innerHTML=total?
+    `• ~${std} חלקים סטנדרטיים → נסה קודם <b>Pick a Brick</b> (איכות + צבעים עדכניים).<br>`+
+    `• ${tech?`~${tech} חלקי Technic/גלגלי שיניים → <b>BrickLink</b> (מבחר וזול).<br>`:''}`+
+    `• מה שלא נמצא / צבעים נדירים → <b>BrickLink Easy Buy</b> עם ה-XML.<br>`+
+    (total>800?'• בכמות כזו שווה לבדוק גם <b>Webrick</b> — חיסכון של 40-60%.<br>':'')+
+    (cost+ship>75?'• ⚠ ההזמנה מעל $75 — שקול לפצל ל-2 הזמנות כדי להימנע ממע"מ יבוא.':'')
+    :'צור תוכנית כדי לקבל המלצת פיצול בין ספקים.';
+}
+function makeXML(){
+  const items=withSpare();
+  return '<INVENTORY>\n'+items.map(b=>
+`  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>${esc(b.partNum)}</ITEMID>\n    <COLOR>${b.blColorId||0}</COLOR>\n    <MINQTY>${b.qty}</MINQTY>\n    <CONDITION>N</CONDITION>\n    <NOTIFY>N</NOTIFY>\n  </ITEM>`).join('\n')+'\n</INVENTORY>';
+}
+function makeCSV(){
+  const items=withSpare();
+  return 'Design ID,Color Name,Quantity\n'+items.map(b=>`${b.partNum},${b.colorName},${b.qty}`).join('\n');
+}
+function dl(name,content,type){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type}));
+  a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+function projName(){return (cur()?.name||'lego').replace(/[^\w\u0590-\u05FF-]+/g,'_')}
+document.getElementById('dlXml').onclick=()=>{if(!withSpare().length)return toast('אין חלקים'); dl(projName()+'_bricklink.xml',makeXML(),'text/xml'); toast('XML ירד — העלה ב-BrickLink ✔')};
+document.getElementById('dlCsv').onclick=()=>{if(!withSpare().length)return toast('אין חלקים'); dl(projName()+'_brickowl.csv',makeCSV(),'text/csv'); toast('CSV ירד ✔')};
+document.getElementById('cpXml').onclick=async()=>{try{await navigator.clipboard.writeText(makeXML()); toast('ה-XML הועתק 📋')}catch(e){toast('העתקה נכשלה')}};
+document.getElementById('pvXml').onclick=()=>{const el=document.getElementById('xmlPrev'); el.textContent=makeXML(); el.style.display=el.style.display==='block'?'none':'block'};
+
+/* === PROJECTS === */
+function renderProjects(){
+  const list=Object.values(S.projects).sort((a,b)=>b.created-a.created);
+  const el=document.getElementById('projList');
+  const cols=['var(--red)','var(--yellow)','var(--blue)','var(--green)','var(--orange)'];
+  el.innerHTML=list.length?list.map((p,i)=>`<div class="proj">
+    <div class="pico" style="background:${cols[i%cols.length]}"></div>
+    <div class="meta"><b>${esc(p.name)}${p.id===S.currentId?' ⭐':''}</b>
+      <span>${p.plan?p.plan.totalPieces+' חלקים · קושי '+p.plan.difficulty+'/5':'טיוטה'} · ${new Date(p.created).toLocaleDateString('he-IL')}</span></div>
+    <button class="btn blue sm" onclick="openProj('${p.id}')">פתח</button>
+    <button class="del-row" onclick="delProj('${p.id}')">✕</button>
+  </div>`).join(''):'<div class="empty">אין פרויקטים שמורים עדיין</div>';
+}
+function openProj(id){S.currentId=id; restoreInputs(S.projects[id]); renderResult(); renderBOM(); saveState(); showTab(S.projects[id].plan?'result':'plan'); toast('הפרויקט נטען ✔')}
+function delProj(id){
+  if(!confirm('למחוק את הפרויקט "'+S.projects[id].name+'"?'))return;
+  delete S.projects[id]; if(S.currentId===id)S.currentId=Object.keys(S.projects)[0]||null;
+  saveState(); renderProjects(); renderResult(); renderBOM();
+}
+document.getElementById('newProj').onclick=()=>{
+  const id=uid(); S.projects[id]={id,name:'פרויקט חדש',created:Date.now(),input:{},plan:null,bom:[],spare:5};
+  S.currentId=id; imgData=null; prev.style.display='none'; drop.classList.remove('has');
+  ['desc','pBudget','pColors'].forEach(x=>sv(x,'')); sv('pTheme','auto'); sv('pSize','auto'); sv('pDiff','auto');
+  document.getElementById('pMotor').checked=false;
+  saveState(); renderResult(); renderBOM(); showTab('plan'); toast('פרויקט חדש נוצר 🧱');
+};
+document.getElementById('expAll').onclick=()=>dl('lego_projects.json',JSON.stringify(S.projects,null,2),'application/json');
+document.getElementById('impBtn').onclick=()=>document.getElementById('impFile').click();
+document.getElementById('impFile').onchange=e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result); Object.assign(S.projects,d); saveState(); renderProjects(); toast('הייבוא הושלם ✔')}catch(x){toast('קובץ לא תקין')}};
+  r.readAsText(f);
+};
+
+/* === INIT === */
+document.getElementById('buildTag').textContent=APP_BUILD;
+document.getElementById('buildTag2').textContent='גרסת אפליקציה: '+APP_BUILD;
+loadState();
+const p0=cur();
+if(p0){restoreInputs(p0); renderResult()}
+showTab(S.ui.tab&&document.getElementById('tab-'+S.ui.tab)?S.ui.tab:'plan');
+</script>
+</body>
+</html>

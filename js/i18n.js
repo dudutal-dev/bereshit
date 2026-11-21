@@ -1,7 +1,7 @@
 // שפת הממשק: עברית או אנגלית. הבחירה נשמרת במכשיר.
-const KEY = "kedem.lang";
+const KEY = "bereshit.lang";
 const STR = {
-  app: { he: "קֶדֶם", en: "Kedem" },
+  app: { he: "בְּרֵאשִׁית", en: "Bereshit" },
   tagline: { he: "סיפורי התנ״ך, כמו שלא ראיתם אותם", en: "The stories of the Hebrew Bible, as you have not seen them" },
   navStories: { he: "סיפורים", en: "Stories" },
   navBooks: { he: "ספרים", en: "Books" },
@@ -59,7 +59,7 @@ export const getLang = () => lang;
 export function setLang(l) { lang = l === "en" ? "en" : "he"; try { localStorage.setItem(KEY, lang); } catch { /* מצב פרטי */ } applyLang(); }
 export function applyLang() {
   const h = document.documentElement; h.lang = lang; h.dir = lang === "he" ? "rtl" : "ltr";
-  document.title = lang === "he" ? "קדם · סיפורי התנ״ך" : "Kedem · Stories of the Hebrew Bible";
+  document.title = lang === "he" ? "בראשית · סיפורי התנ״ך" : "Bereshit · Stories of the Hebrew Bible";
 }
 // t("key") למחרוזות ממשק; L({he,en}) לשדות תוכן
 export const t = (k) => (STR[k] ? STR[k][lang] : k);

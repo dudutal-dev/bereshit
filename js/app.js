@@ -1,10 +1,10 @@
-// קדם: בית, מפת הספרים, "אני", ומסך הסיפור. אין שלב בנייה; הכול מודולים רגילים.
+// בראשית: בית, מפת הספרים, "אני", ומסך הסיפור. אין שלב בנייה; הכול מודולים רגילים.
 import { t, L, ord, getLang, setLang, applyLang } from "./i18n.js";
 import { STORIES, PLANNED, BOOKS, SECTIONS, REGISTERS } from "../content/index.js";
 import { DEFS, W, H } from "../scenes/kit.js";
 
 const app = document.getElementById("app");
-const PKEY = "kedem.progress";
+const PKEY = "bereshit.progress";
 const load = () => { try { return JSON.parse(localStorage.getItem(PKEY) || "{}"); } catch { return {}; } };
 const save = (p) => { try { localStorage.setItem(PKEY, JSON.stringify(p)); } catch { /* מצב פרטי */ } };
 let progress = load();

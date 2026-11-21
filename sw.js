@@ -1,5 +1,5 @@
 // מטמון לעבודה בלי רשת. מעלים את המספר בכל שינוי בקבצים.
-const CACHE = "kedem-v1";
+const CACHE = "bereshit-v1";
 const STORIES = ["david-goliath"];
 const FILES = [
   "./", "index.html", "css/app.css", "js/app.js", "js/i18n.js", "content/index.js", "scenes/kit.js", "scenes/scene.css", "manifest.webmanifest", "icon.svg",

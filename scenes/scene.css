@@ -1,0 +1,16 @@
+/* סגנון הלוחות המאוירים */
+.plate{display:block;width:100%;height:auto;border-radius:14px;background:#07090f}
+.plate text{font-family:"Frank Ruhl Libre","Heebo",serif;direction:inherit}
+.k-frame rect,.k-frame path{fill:none;stroke:url(#k-gold);stroke-width:1.1;stroke-linecap:round}
+.k-label{font-size:10.5px;font-weight:600;fill:#fbe9b0;paint-order:stroke;stroke:#07090f;stroke-width:3px;stroke-linejoin:round;letter-spacing:.01em}
+.k-label.k-big{font-size:14px;font-weight:700;fill:#fff3c9}
+.k-label.k-sm{font-size:9px;font-weight:500;fill:#e9d9ac}
+.k-lead{fill:none;stroke:#e2b955;stroke-width:.8;opacity:.85}
+.k-dot{fill:#fbe9b0}
+.k-num{font-size:9px;font-weight:700;fill:#fbe9b0;paint-order:stroke;stroke:#07090f;stroke-width:2.5px}
+.k-rule path{stroke:#e2b955;stroke-width:1;fill:none}
+.k-flow{fill:none;stroke:#d8efff;stroke-width:1.4;stroke-linecap:round;stroke-dasharray:5 13;opacity:.85;animation:k-flow 1.6s linear infinite}
+@keyframes k-flow{to{stroke-dashoffset:-36}}
+.k-run{animation:k-run .5s ease-in-out infinite alternate}
+@keyframes k-run{to{translate:0 -1.6px}}
+@media (prefers-reduced-motion:reduce){.k-flow,.k-run{animation:none}}

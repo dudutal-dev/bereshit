@@ -1,0 +1,13 @@
+{
+  "name": "קדם · Kedem",
+  "short_name": "קדם",
+  "description": "סיפורי התנ״ך בסרטוני אנימציה ובלוחות מאוירים",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#06080f",
+  "theme_color": "#06080f",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

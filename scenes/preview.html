@@ -1,0 +1,11 @@
+<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><title>Kedem plates</title>
+<link rel="stylesheet" href="../css/app.css"><link rel="stylesheet" href="scene.css">
+<body style="background:#07090f;margin:0;padding:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+<script type="module">
+import { DEFS, W, H } from "./kit.js";
+const q = new URLSearchParams(location.search), id = q.get("id") || "david-goliath", lang = q.get("lang") || "he";
+document.documentElement.lang = lang; document.documentElement.dir = lang === "he" ? "rtl" : "ltr";
+const plates = (await import(`./${id}.js`)).default;
+document.body.insertAdjacentHTML("afterbegin", DEFS);
+for (const p of plates) document.body.insertAdjacentHTML("beforeend", `<svg class="plate" viewBox="0 0 ${W} ${H}">${p((o) => o[lang])}</svg>`);
+</script></body></html>

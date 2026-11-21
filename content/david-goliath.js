@@ -13,7 +13,7 @@ export default {
   epigraph: {
     he: "אַתָּה בָּא אֵלַי בְּחֶרֶב וּבַחֲנִית וּבְכִידוֹן",
     en: "Thou comest to me with a sword, and with a spear, and with a javelin",
-    ref: { he: "י״ז, מה", en: "17:45" },
+    ref: { he: "י״ז, מה", en: "17:45" }, osis: "1Sam.17.45",
   },
 
   hook: {
@@ -101,16 +101,16 @@ export default {
   },
 
   verses: [
-    { ref: { he: "י״ז, ד", en: "17:4" },
+    { osis: "1Sam.17.4", ref: { he: "י״ז, ד", en: "17:4" },
       he: "וַיֵּצֵא אִישׁ־הַבֵּנַיִם מִמַּחֲנוֹת פְּלִשְׁתִּים גָּלְיָת שְׁמוֹ מִגַּת גָּבְהוֹ שֵׁשׁ אַמּוֹת וָזָרֶת.",
       en: "And there went out a champion from the camp of the Philistines, named Goliath, of Gath, whose height was six cubits and a span." },
-    { ref: { he: "י״ז, מ", en: "17:40" },
+    { osis: "1Sam.17.40", ref: { he: "י״ז, מ", en: "17:40" },
       he: "וַיִּקַּח מַקְלוֹ בְּיָדוֹ וַיִּבְחַר־לוֹ חֲמִשָּׁה חַלֻּקֵי־אֲבָנִים מִן־הַנַּחַל וַיָּשֶׂם אֹתָם בִּכְלִי הָרֹעִים אֲשֶׁר־לוֹ וּבַיַּלְקוּט וְקַלְּעוֹ בְיָדוֹ וַיִּגַּשׁ אֶל־הַפְּלִשְׁתִּי.",
       en: "And he took his staff in his hand, and chose him five smooth stones out of the brook, and put them in the shepherd's bag which he had, even in his scrip; and his sling was in his hand; and he drew near to the Philistine." },
-    { ref: { he: "י״ז, מה", en: "17:45" },
+    { osis: "1Sam.17.45", ref: { he: "י״ז, מה", en: "17:45" },
       he: "וַיֹּאמֶר דָּוִד אֶל־הַפְּלִשְׁתִּי אַתָּה בָּא אֵלַי בְּחֶרֶב וּבַחֲנִית וּבְכִידוֹן וְאָנֹכִי בָא־אֵלֶיךָ בְּשֵׁם ה׳ צְבָאוֹת אֱלֹהֵי מַעַרְכוֹת יִשְׂרָאֵל אֲשֶׁר חֵרַפְתָּ.",
       en: "Then said David to the Philistine: 'Thou comest to me with a sword, and with a spear, and with a javelin; but I come to thee in the name of the LORD of hosts, the God of the armies of Israel, whom thou hast taunted.'" },
-    { ref: { he: "י״ז, מט", en: "17:49" },
+    { osis: "1Sam.17.49", ref: { he: "י״ז, מט", en: "17:49" },
       he: "וַיִּשְׁלַח דָּוִד אֶת־יָדוֹ אֶל־הַכֶּלִי וַיִּקַּח מִשָּׁם אֶבֶן וַיְקַלַּע וַיַּךְ אֶת־הַפְּלִשְׁתִּי אֶל־מִצְחוֹ וַתִּטְבַּע הָאֶבֶן בְּמִצְחוֹ וַיִּפֹּל עַל־פָּנָיו אָרְצָה.",
       en: "And David put his hand in his bag, and took thence a stone, and slung it, and smote the Philistine in his forehead; and the stone sank into his forehead, and he fell upon his face to the earth." },
   ],
